@@ -125,7 +125,7 @@
 								(inc %)))
 		(if (nil? first-object)
 			(struct Pixel pixel (:background-color projection))
-			(struct Pixel pixel (.pixel-color (:object first-object) ray)))))
+			(struct Pixel pixel (.color-at (:object first-object) ray)))))
 
 (defn draw
 	"Draws the scene"
@@ -164,12 +164,12 @@
 						(:height projection)
 						java.awt.image.BufferedImage/TYPE_INT_RGB)
 			file 	(new java.io.File filename)					]
-;		(map #(save-as-png-pixel image % counter total) pixels)
-		(loop [ xs pixels ]
-			(if (not (empty? xs))
-				(do
-					(save-as-png-pixel image (first xs) counter total)
-					(recur (rest xs)))))
+		(dorun (map #(save-as-png-pixel image % counter total) pixels))
+		; (loop [ xs pixels ]
+		; 	(if (not (empty? xs))
+		; 		(do
+		; 			(save-as-png-pixel image (first xs) counter total)
+		; 			(recur (rest xs)))))
 		(javax.imageio.ImageIO/write image "png" file)
 		nil ))
 

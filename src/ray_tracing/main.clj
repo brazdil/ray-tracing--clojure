@@ -18,23 +18,23 @@
 					java.awt.Color/BLACK ))
 
 (def sphere1 	(Sphere. 
-					(struct geometry/Vector 3 0 15)
-					2
+					(struct geometry/Vector -1 0 7)
+					1
 					java.awt.Color/RED ))
 
 (def sphere2 	(Sphere. 
-					(struct geometry/Vector 5 0 15)
-					1.5
+					(struct geometry/Vector -2 0 7)
+					0.75
 					java.awt.Color/BLUE ))
 
-(def square1    (Parallelogram. 
-					(struct geometry/Vector -1 0 3)
-					(struct geometry/Vector 2 1 2)
-					(struct geometry/Vector 1 3 0)
-					java.awt.Color/GREEN))
+(def floor    (object/create-parallelogram
+					(struct geometry/Vector -2 -1 0)
+					(struct geometry/Vector 4 0 0)
+					(struct geometry/Vector 0 0 10)
+					java.awt.Color/GRAY))
 
 (defn test-draw []
-	(drawing/draw [ sphere1 sphere2 square1 ] camera projection))
+	(drawing/draw [ floor sphere1 sphere2 ] camera projection))
 
 (defn test-save []
 	(drawing/save-as-png 	"test.png"
