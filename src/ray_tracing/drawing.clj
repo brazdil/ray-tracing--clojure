@@ -172,3 +172,37 @@
 					(recur (rest xs)))))
 		(javax.imageio.ImageIO/write image "png" file)
 		nil ))
+
+(defn- show-realtime-pixel
+	[ image pixel counter total window ]
+	(do
+		(send-off counter #(do	(if (not= 	(quot (* 100 %) total)
+											(quot (* 100 (inc %)) total))
+									(do
+										(println (str "drawing: " (quot (* 100 (inc %)) total) "%"))
+										(.repaintImage window)))
+								(inc %)))
+		(. image setRGB		(first (:coords pixel))
+							(first (rest (:coords pixel)))
+							(. (:color pixel) getRGB))))
+
+(defn show-realtime
+	[ projection pixels ]
+	(let [ 	total  	(* (:width projection) (:height projection))
+			counter (agent 0)
+			image 	(new java.awt.image.BufferedImage
+						(:width projection)
+						(:height projection)
+						java.awt.image.BufferedImage/TYPE_INT_RGB)
+			window 	(new ray_tracing.DrawWindow image) ]
+		(.setVisible window true)
+		(let [ graphics   (.getGraphics image) ]
+			(.setColor graphics java.awt.Color/WHITE)
+			(.fillRect graphics 0 0 (:width projection) (:height projection))
+			(.dispose graphics))
+		(loop [ xs pixels ]
+			(if (not (empty? xs))
+				(do
+					(show-realtime-pixel image (first xs) counter total window)
+					(recur (rest xs)))))
+		nil ))

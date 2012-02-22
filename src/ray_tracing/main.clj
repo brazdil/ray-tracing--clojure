@@ -13,8 +13,8 @@
 (def projection	(struct drawing/Projection 
 					(java.lang.Math/toRadians 60)
 					2
-					800
-					600
+					1024
+					768
 					java.awt.Color/BLACK ))
 
 (def sphere1 	(Sphere. 
@@ -29,8 +29,8 @@
 
 (def square1    (Parallelogram. 
 					(struct geometry/Vector -1 0 3)
-					(struct geometry/Vector 2 0 2)
-					(struct geometry/Vector 0 2 0)
+					(struct geometry/Vector 2 1 2)
+					(struct geometry/Vector 1 3 0)
 					java.awt.Color/GREEN))
 
 (defn test-draw []
@@ -41,3 +41,6 @@
 							projection
 							(test-draw)))
 
+(defn test-realtime []
+	(drawing/show-realtime 	projection
+							(test-draw)))
