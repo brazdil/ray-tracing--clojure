@@ -13,9 +13,12 @@
 		"Takes the first intersection with the object and computes
 		 its color in that point"))
 
+(def epsilon 0.0001)
+(def minus-epsilon (- epsilon))
+
 (defn first-intersect
 	[ object ray ]
-	(reduce 	#(if (<= %2 0.0001)
+	(reduce 	#(if (<= %2 epsilon)
 					%1
 					(if (nil? %1)
 						%2
@@ -23,8 +26,27 @@
 				nil
 				(.intersect object ray)))
 
+(defn first-intersecting-object
+	[ objects ray ]
+	(let [ first-struct		(reduce 	#(if (nil? (:first-intersect %2))
+											%1
+											(if (nil? %1)
+												%2
+												(if (< (:first-intersect %1) (:first-intersect %2))
+													%1
+													%2)))
+										nil
+										(map 	#(if true 
+													{:object %, 
+													 :first-intersect 
+													 	(first-intersect % ray)}) 
+												objects))		]
+		(if (nil? first-struct)
+			nil
+			(:object first-struct))))
+
 (deftype Sphere
-	[ center radius color ]
+	[ center radius material ]
 	PObject
 		(intersect [ this ray ]
 			(let [ O_C  (geometry/vec-subtract (:point ray) center)
@@ -49,14 +71,14 @@
 		(color-at [ this ray ]
 			(let [ intersection 	(geometry/ray-point 	ray
 															(first-intersect this ray))			 ]
-				color)))
+				material)))
 
 (defn sphere-create
-	[ origin radius color ]
-	(Sphere. origin radius color))
+	[ origin radius material ]
+	(Sphere. origin radius material))
 
 (deftype Parallelogram
-	[ origin v1 v2 color N d len-v1-sq len-v2-sq ]
+	[ origin v1 v2 material N d len-v1-sq len-v2-sq ]
 	PObject
 		(intersect [ this ray ]
 			(let [ t        (/	(-  d
@@ -75,10 +97,10 @@
 		(color-at [ this ray ]
 			(let [ intersection 	(geometry/ray-point 	ray
 															(first-intersect this ray))			 ]
-				color)))
+				material)))
 
 (defn parallelogram-create
-	[ origin v1 v2 color ]
+	[ origin v1 v2 material ]
 	(let [ 	len-v1 		(geometry/vec-length v1)
 	       	len-v2 		(geometry/vec-length v2)
 	       	N        	(geometry/vec-normalize
@@ -87,15 +109,82 @@
 	(Parallelogram. 	origin 
 						v1 
 						v2 
-						color
+						material
 						N
 						d
 						(* len-v1 len-v1)
 						(* len-v2 len-v2) )))
 
-(deftype Box
-	[ rect1 rect2 rect3 rect4 rect5 rect6 color ])
+(defn rectangle-create
+	[ origin v1 v2 material ]
+	(let 	[ 	dot12			(geometry/vec-dot-product v1 v2)	]
+		(if (and	(< dot12 epsilon)	(> dot12 minus-epsilon))
+			(parallelogram-create origin v1 v2 material)
+			(throw (new IllegalArgumentException "Vectors are not perpendicular")))))
+
+(deftype Composite
+	[ objects ]
+	PObject
+		(intersect [ this ray ]
+			(reduce 	#(reduce conj %1 %2)
+						(map	#(.intersect % ray)
+								objects)))
+		(color-at [ this ray ]
+			(.color-at (first-intersecting-object objects ray) ray)))
+		
+
+(defn parallelepiped-create
+	[ origin v1 v2 v3 material ]
+	(let [	origin-opposite		(geometry/vec-add
+									origin
+									(geometry/vec-add
+										v1
+										(geometry/vec-add
+											v2
+											v3)))
+			mv1					(geometry/vec-mult v1 -1)
+			mv2					(geometry/vec-mult v2 -1)
+			mv3					(geometry/vec-mult v3 -1) 		]
+	(Composite. 		[	(parallelogram-create
+								origin
+								v1
+								v2
+								material)
+							(parallelogram-create
+								origin
+								v1
+								v3
+								material)
+							(parallelogram-create
+								origin
+								v2
+								v3
+								material)
+							(parallelogram-create
+								origin-opposite
+								mv1
+								mv2
+								material)
+							(parallelogram-create
+								origin-opposite
+								mv1
+								mv3
+								material)
+							(parallelogram-create
+								origin-opposite
+								mv2
+								mv3
+								material)				])))
+
+
 
 (defn box-create
-	[ origin v1 v2 v3 color ]
-	[])
+	[ origin v1 v2 v3 material ]
+	(let 	[ 	dot12			(geometry/vec-dot-product v1 v2)
+				dot13			(geometry/vec-dot-product v1 v3)
+				dot23			(geometry/vec-dot-product v2 v3)	]
+		(if (and	(< dot12 epsilon)	(> dot12 minus-epsilon)
+					(< dot13 epsilon)	(> dot13 minus-epsilon)
+					(< dot23 epsilon)	(> dot23 minus-epsilon))
+			(parallelepiped-create origin v1 v2 v3 material)
+			(throw (new IllegalArgumentException "Vectors are not perpendicular")))))

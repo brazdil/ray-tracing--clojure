@@ -25,14 +25,21 @@
 					0.75
 					java.awt.Color/BLUE ))
 
-(def floor    	(object/parallelogram-create
+(def box1		(object/box-create
+					(geometry/vec-create  1   -1   4)
+					(geometry/vec-create  1    0   0)
+					(geometry/vec-create  0 0.75   0)
+					(geometry/vec-create  0    0   1)
+					java.awt.Color/GREEN))
+
+(def floor    	(object/rectangle-create
 					(geometry/vec-create -2 -1 0)
 					(geometry/vec-create 4 0 0)
 					(geometry/vec-create 0 0 10)
 					java.awt.Color/GRAY))
 
 (defn test-draw []
-	(drawing/draw [ floor sphere1 sphere2 ] camera projection))
+	(drawing/draw-simple [ floor sphere1 sphere2 box1 ] camera projection))
 
 (defn test-save []
 	(drawing/save-as-png 	"test.png"

@@ -100,7 +100,7 @@
 			vec-bottom-left
 			vec-bottom-right)))
 
-(defn- draw-pixel
+(defn- draw-single-coord
 	[ scene camera projection screen-rect pixel counter ]
 	(let [ 	x					(+ (first pixel) 0.5)
 			y					(+ (first (rest pixel)) 0.5)
@@ -121,19 +121,7 @@
 			ray 				(geometry/ray-create
 									(:position camera)
 									screen-coord)
-			first-object		(reduce 	#(if (nil? (:first-intersect %2))
-													%1
-													(if (nil? %1)
-														%2
-														(if (< (:first-intersect %1) (:first-intersect %2))
-															%1
-															%2)))
-											nil
-											(map 	#(if true 
-														{:object %, 
-														 :first-intersect 
-														 	(object/first-intersect % ray)}) 
-													scene))										]
+			first-object		(object/first-intersecting-object scene ray)	]
 		; increase the counter and print if increased by 1 percent
 		(send-off counter #(do	(if (not= 	(quot (* 100 %) total)
 											(quot (* 100 (inc %)) total))
@@ -141,15 +129,15 @@
 								(inc %)))
 		(if (nil? first-object)
 			(pixel-create pixel (:background-color projection))
-			(pixel-create pixel (.color-at (:object first-object) ray)))))
+			(pixel-create pixel (.color-at first-object ray)))))
 
-(defn draw
+(defn draw-simple
 	"Draws the scene"
 	[ scene camera projection ]
 	(let [ rect (screen-rect camera projection)
 		   counter (agent 0) ]
 		(pmap 
-			#(draw-pixel 
+			#(draw-single-coord
 				scene
 				camera
 				projection
@@ -169,7 +157,7 @@
 								(inc %)))
 		(.setRGB image		(first (:coords pixel))
 							(first (rest (:coords pixel)))
-							(. (:color pixel) getRGB))))
+							(.getRGB (:color pixel)))))
 (defn save-as-png
 	"Saves pixels as a PNG"
 	[ filename projection pixels ]
@@ -195,7 +183,7 @@
 								(inc %)))
 		(.setRGB image 		(first (:coords pixel))
 							(first (rest (:coords pixel)))
-							(. (:color pixel) getRGB))))
+							(.getRGB (:color pixel)))))
 
 (defn show-realtime
 	[ projection pixels ]
