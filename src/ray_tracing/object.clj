@@ -51,7 +51,7 @@
 															(first-intersect this ray))			 ]
 				color)))
 
-(defn create-sphere
+(defn sphere-create
 	[ origin radius color ]
 	(Sphere. origin radius color))
 
@@ -77,7 +77,7 @@
 															(first-intersect this ray))			 ]
 				color)))
 
-(defn create-parallelogram
+(defn parallelogram-create
 	[ origin v1 v2 color ]
 	(let [ 	len-v1 		(geometry/vec-length v1)
 	       	len-v2 		(geometry/vec-length v2)
@@ -96,6 +96,6 @@
 (deftype Box
 	[ rect1 rect2 rect3 rect4 rect5 rect6 color ])
 
-(defn create-box 
+(defn box-create
 	[ origin v1 v2 v3 color ]
 	[])

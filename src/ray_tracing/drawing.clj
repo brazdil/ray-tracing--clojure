@@ -102,7 +102,7 @@
 												(:top-left screen-rect))
 											(/ y (:height projection))))
 									(:top-left screen-rect))
-			ray 				(struct geometry/Ray
+			ray 				(geometry/ray-create
 									(:position camera)
 									screen-coord)
 			first-object		(reduce 	#(if (nil? (:first-intersect %2))
@@ -165,11 +165,6 @@
 						java.awt.image.BufferedImage/TYPE_INT_RGB)
 			file 	(new java.io.File filename)					]
 		(dorun (map #(save-as-png-pixel image % counter total) pixels))
-		; (loop [ xs pixels ]
-		; 	(if (not (empty? xs))
-		; 		(do
-		; 			(save-as-png-pixel image (first xs) counter total)
-		; 			(recur (rest xs)))))
 		(javax.imageio.ImageIO/write image "png" file)
 		nil ))
 
@@ -200,9 +195,5 @@
 			(.setColor graphics java.awt.Color/WHITE)
 			(.fillRect graphics 0 0 (:width projection) (:height projection))
 			(.dispose graphics))
-		(loop [ xs pixels ]
-			(if (not (empty? xs))
-				(do
-					(show-realtime-pixel image (first xs) counter total window)
-					(recur (rest xs)))))
+		(dorun (map #(show-realtime-pixel image % counter total window) pixels))
 		nil ))

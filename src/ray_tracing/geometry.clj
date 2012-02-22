@@ -1,27 +1,31 @@
 (ns ray-tracing.geometry)
 
-(defstruct Vector :x :y :z)
+(defrecord Vector [x y z])
 
-(defstruct Ray :point :direction)
+(defrecord Ray [point direction])
+
+(defn vec-create 
+	[ x y z ]
+	(Vector. x y z))
 
 (defn vec-add
 	"Adds two vectors"
 	[ v1 v2 ]
-	(struct Vector (+ (:x v1) (:x v2))
+	(vec-create	   (+ (:x v1) (:x v2))
 	               (+ (:y v1) (:y v2))
 	               (+ (:z v1) (:z v2))))
 
 (defn vec-subtract
 	"Subtracts two vectors"
 	[ v1 v2 ]
-	(struct Vector (- (:x v1) (:x v2))
+	(vec-create	   (- (:x v1) (:x v2))
 	               (- (:y v1) (:y v2))
 	               (- (:z v1) (:z v2))))
 
 (defn vec-mult
 	"Multiplies a vector by a scalar"
 	[ v k ]
-	(struct Vector (* k (:x v))
+	(vec-create	   (* k (:x v))
 	               (* k (:y v))
 	               (* k (:z v))))
 
@@ -48,7 +52,7 @@
 (defn vec-vector-product
 	"Returns the vector product of two vectors"
 	[ v1 v2 ]
-	(struct Vector 	(- 	(* (:y v1) (:z v2))
+	(vec-create	   	(- 	(* (:y v1) (:z v2))
 						(* (:y v2) (:z v1)))
 					(- 	(* (:z v1) (:x v2))
 					  	(* (:z v2) (:x v1)))
@@ -80,7 +84,7 @@
 	[ v angle ]
 	(let [ angle-sin	(java.lang.Math/sin angle)
 	       angle-cos	(java.lang.Math/cos angle) ]
-		(struct Vector
+		(vec-create
 			(- (* (:x v) angle-cos) (* (:y v) angle-sin))
 			(+ (* (:x v) angle-sin) (* (:y v) angle-cos))
 			(:z v))))
@@ -98,7 +102,7 @@
 	       angle-cos	(java.lang.Math/cos angle)
 	       angle-1Mcos	(- 1 angle-cos)
 	       uxPvyPwz		(+ (* u x) (* v y) (* w z)) ]
-		(struct Vector
+		(vec-create
 			(+ 	(* u uxPvyPwz angle-1Mcos) 
 				(* x angle-cos) 
 				(* 
@@ -114,6 +118,10 @@
 				(* 
 					(- (* u z) (* v x) )
 					angle-sin)))))
+
+(defn ray-create
+	[ point direction ]
+	(Ray. point direction))
 
 (defn ray-point
 	"Returns point on the ray line given by the multiple of lengths of
