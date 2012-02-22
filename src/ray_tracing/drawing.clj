@@ -24,18 +24,34 @@
     (when (every? first seqs)
       (lazy-seq (step v-original-seqs)))))
 
-(defn pixels
+(defn pixels-seq
   "Returns coordiantes of all pixels in the screen"
   [width height]
   (cartesian-product (range 0 width) (range 0 height)))
 
-(defstruct Camera :position :look-at :up)
+(defrecord Camera [position look-at up])
 
-(defstruct Projection :viewing-angle :screen-distance :width :height :background-color)
+(defn camera-create
+	[ position look-at up ]
+	(Camera. position look-at up))
 
-(defstruct Pixel :coords :color)
+(defrecord Projection [ viewing-angle screen-distance width height background-color ])
 
-(defstruct Rectangle :top-left :top-right :bottom-left :bottom-right)
+(defn projection-create
+	[ viewing-angle screen-distance width height background-color ]
+	(Projection. viewing-angle screen-distance width height background-color))
+
+(defrecord Pixel [ coords color ])
+
+(defn pixel-create
+	[ coords color ]
+	(Pixel. coords color))
+
+(defrecord Rectangle [ top-left top-right bottom-left bottom-right ] )
+
+(defn rectangle-create
+	[ top-left top-right bottom-left bottom-right ]
+	(Rectangle. top-left top-right bottom-left bottom-right))
 
 (defn screen-rect
 	"Returns the coordinates of screen's rectangle's vertices. 
@@ -78,7 +94,7 @@
 			vec-bottom-right		(geometry/vec-add
 										vec-bottom-left
 										vec-twice-sideways) ]
-		(struct Rectangle 
+		(rectangle-create 
 			vec-top-left
 			vec-top-right
 			vec-bottom-left
@@ -124,8 +140,8 @@
 									(println (str "computing: " (quot (* 100 (inc %)) total) "%")))
 								(inc %)))
 		(if (nil? first-object)
-			(struct Pixel pixel (:background-color projection))
-			(struct Pixel pixel (.color-at (:object first-object) ray)))))
+			(pixel-create pixel (:background-color projection))
+			(pixel-create pixel (.color-at (:object first-object) ray)))))
 
 (defn draw
 	"Draws the scene"
@@ -140,7 +156,7 @@
 				rect
 				%
 				counter) 
-			(pixels 
+			(pixels-seq
 				(:width projection) 
 				(:height projection)))))
 
@@ -151,7 +167,7 @@
 											(quot (* 100 (inc %)) total))
 									(println (str "drawing: " (quot (* 100 (inc %)) total) "%")))
 								(inc %)))
-		(. image setRGB		(first (:coords pixel))
+		(.setRGB image		(first (:coords pixel))
 							(first (rest (:coords pixel)))
 							(. (:color pixel) getRGB))))
 (defn save-as-png
@@ -177,7 +193,7 @@
 										(println (str "drawing: " (quot (* 100 (inc %)) total) "%"))
 										(.repaintImage window)))
 								(inc %)))
-		(. image setRGB		(first (:coords pixel))
+		(.setRGB image 		(first (:coords pixel))
 							(first (rest (:coords pixel)))
 							(. (:color pixel) getRGB))))
 

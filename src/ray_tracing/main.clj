@@ -1,16 +1,14 @@
 (ns ray-tracing.main
 	(:require [ray-tracing.drawing :as drawing])
 	(:require [ray-tracing.geometry :as geometry])
-	(:require [ray-tracing.object :as object])
-	(:import (ray_tracing.object 	Sphere
-									Parallelogram)))
+	(:require [ray-tracing.object :as object]))
 
-(def camera 	(struct drawing/Camera
+(def camera 	(drawing/camera-create
 					(geometry/vec-create 0 0 0)
 					(geometry/vec-create 0 0 1)
 					(geometry/vec-create 0 1 0)))
 
-(def projection	(struct drawing/Projection 
+(def projection	(drawing/projection-create
 					(java.lang.Math/toRadians 60)
 					2
 					1024
