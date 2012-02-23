@@ -1,5 +1,7 @@
 (ns ray-tracing.object
-	(:require [ray-tracing.geometry :as geometry]))
+	(:require [ray-tracing.geometry :as geometry])
+	(:require [ray-tracing.material :as material])
+	(:require [ray-tracing.lighting :as lighting]))
 
 (defmacro dbg [x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
 
@@ -9,14 +11,14 @@
 		"Returns list of points of intersection of the object with given ray.
 		 For convenience these are returned as a single scalar, which is
 		 the parameter \"t\" in the line equation: X(t) = P + t * D ")
-	(color-at [ this ray ]
+	(colour-at [ this objects lights ray ]
 		"Takes the first intersection with the object and computes
 		 its color in that point"))
 
 (def epsilon 0.0001)
 (def minus-epsilon (- epsilon))
 
-(defn first-intersect
+(defn first-intersection
 	[ object ray ]
 	(reduce 	#(if (<= %2 epsilon)
 					%1
@@ -26,24 +28,79 @@
 				nil
 				(.intersect object ray)))
 
-(defn first-intersecting-object
+(defn- first-intersecting-struct
+	"Returns a structure with the first object intesected by the ray,
+	 or nil if there wasn't any intersection."
 	[ objects ray ]
-	(let [ first-struct		(reduce 	#(if (nil? (:first-intersect %2))
-											%1
-											(if (nil? %1)
-												%2
-												(if (< (:first-intersect %1) (:first-intersect %2))
-													%1
-													%2)))
-										nil
-										(map 	#(if true 
-													{:object %, 
-													 :first-intersect 
-													 	(first-intersect % ray)}) 
-												objects))		]
-		(if (nil? first-struct)
+	(reduce 	#(if (nil? (:first-intersect %2))
+					%1
+					(if (nil? %1)
+						%2
+						(if (< (:first-intersect %1) (:first-intersect %2))
+							%1
+							%2)))
+				nil
+				(map 	#(if true 
+							{:object %, 
+							 :first-intersect 
+							 	(first-intersection % ray)}) 
+						objects)))
+
+(defn first-intersecting-object
+	"Returns the object that is first hit by the ray, or nil if there isn't any."
+	[ objects ray ]
+	(let [ first-struct		(first-intersecting-struct objects ray)	]
+		(if (or 	(nil? first-struct)
+					(< (:first-intersect first-struct) epsilon))
 			nil
 			(:object first-struct))))
+
+(defn first-intersecting-distance
+	"Returns the distance to first object hit by the ray (in units), 
+	 or +INFINITY if there isn't any."
+	[ objects ray ]
+	(let [ first-struct		(first-intersecting-struct objects ray)	]
+		(if (or 	(nil? first-struct)
+					(< (:first-intersect first-struct) epsilon))
+			java.lang.Double/POSITIVE_INFINITY
+			(:first-intersect first-struct))))
+
+(defn is-intersected
+	"Returns whether there is an intersection with any object between two points"
+	[ objects v1 v2 ]
+	(let [ direction	(geometry/vec-subtract v2 v1) ]
+		(< 	(first-intersecting-distance
+					objects
+					(geometry/ray-create 	v1 
+											direction))
+			(geometry/vec-length direction))))
+
+(defrecord Light [ position colour ])
+
+(defn light-create
+	[ position colour ]
+	(Light. position colour))
+
+(defn- light-compute-diffuse-single
+	[ objects light point normal ]
+	(if (is-intersected objects point (:position light))
+		material/colour-black
+		(let [ angle-dot-prod 	(geometry/vec-dot-product
+									normal
+									(geometry/vec-normalize
+										(geometry/vec-subtract
+											(:position light)
+											point))) 			]
+			(if (< angle-dot-prod 0)
+				material/colour-black
+				(material/colour-mult-scalar 	(:colour light)
+			 									angle-dot-prod)))))
+
+(defn light-compute-diffuse
+	[ objects lights point normal ]
+	(material/colour-average
+		(map	#(light-compute-diffuse-single objects % point normal)
+				lights)))
 
 (deftype Sphere
 	[ center radius material ]
@@ -68,10 +125,19 @@
 						; two intersections
 						[ (/ (+ (- b) (java.lang.Math/sqrt d)) (* 2 a))
 						  (/ (- (- b) (java.lang.Math/sqrt d)) (* 2 a)) ]))))
-		(color-at [ this ray ]
-			(let [ intersection 	(geometry/ray-point 	ray
-															(first-intersect this ray))			 ]
-				material)))
+		(colour-at [ this objects lights ray ]
+			(let [ intersection 	(geometry/ray-point 	
+										ray
+										(first-intersection this ray)) ]
+			(material/material-mix 	material
+									(light-compute-diffuse
+										objects
+										lights
+										intersection
+										(geometry/vec-normalize
+											(geometry/vec-subtract
+												intersection
+												center)))))))
 
 (defn sphere-create
 	[ origin radius material ]
@@ -94,17 +160,21 @@
 							(>= e2 0) (<= e2 len-v2-sq))
 					[ t ]
 					[ ])))
-		(color-at [ this ray ]
-			(let [ intersection 	(geometry/ray-point 	ray
-															(first-intersect this ray))			 ]
-				material)))
-
-(defn parallelogram-create
-	[ origin v1 v2 material ]
-	(let [ 	len-v1 		(geometry/vec-length v1)
+		(colour-at [ this objects lights ray ]
+			(material/material-mix 	material
+									(light-compute-diffuse
+										objects
+										lights
+										(geometry/ray-point 	
+											ray
+											(first-intersection this ray))
+										N))))
+												
+(defn parallelogram-create-normal
+	[ origin v1 v2 N material]
+	(let [ 	N 			(geometry/vec-normalize N)
+			len-v1 		(geometry/vec-length v1)
 	       	len-v2 		(geometry/vec-length v2)
-	       	N        	(geometry/vec-normalize
-							(geometry/vec-vector-product v1 v2))
 			d 			(geometry/vec-dot-product N origin) ]
 	(Parallelogram. 	origin 
 						v1 
@@ -115,6 +185,17 @@
 						(* len-v1 len-v1)
 						(* len-v2 len-v2) )))
 
+(defn parallelogram-create
+	[ origin v1 v2 material ]
+	(parallelogram-create-normal
+	 	origin
+		v1 
+		v2 
+       	(geometry/vec-normalize
+			(geometry/vec-vector-product v1 v2))
+		material))
+
+
 (defn rectangle-create
 	[ origin v1 v2 material ]
 	(let 	[ 	dot12			(geometry/vec-dot-product v1 v2)	]
@@ -122,15 +203,22 @@
 			(parallelogram-create origin v1 v2 material)
 			(throw (new IllegalArgumentException "Vectors are not perpendicular")))))
 
+(defn rectangle-create-normal
+	[ origin v1 v2 N material ]
+	(let 	[ 	dot12			(geometry/vec-dot-product v1 v2)	]
+		(if (and	(< dot12 epsilon)	(> dot12 minus-epsilon))
+			(parallelogram-create-normal origin v1 v2 N material)
+			(throw (new IllegalArgumentException "Vectors are not perpendicular")))))
+
 (deftype Composite
-	[ objects ]
+	[ sub-objects ]
 	PObject
 		(intersect [ this ray ]
 			(reduce 	#(reduce conj %1 %2)
 						(map	#(.intersect % ray)
-								objects)))
-		(color-at [ this ray ]
-			(.color-at (first-intersecting-object objects ray) ray)))
+								sub-objects)))
+		(colour-at [ this objects lights ray ]
+			(.colour-at (first-intersecting-object sub-objects ray) objects lights ray)))
 		
 
 (defn parallelepiped-create
@@ -175,8 +263,6 @@
 								mv2
 								mv3
 								material)				])))
-
-
 
 (defn box-create
 	[ origin v1 v2 v3 material ]

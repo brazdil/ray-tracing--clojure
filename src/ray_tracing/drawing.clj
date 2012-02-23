@@ -1,5 +1,6 @@
 (ns ray-tracing.drawing
 	(:require [ray-tracing.geometry :as geometry])
+	(:require [ray-tracing.material :as material])
 	(:require [ray-tracing.object :as object]))
 
 (defmacro dbg [x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
@@ -13,7 +14,8 @@
 	(fn step [v-seqs]
 	  (let [increment
 		(fn [v-seqs]
-		  (loop [i (dec (count v-seqs)), v-seqs v-seqs]
+		  (loop [ i (dec (count v-seqs)) 
+		          v-seqs v-seqs]
 		    (if (= i -1) nil
 			(if-let [rst (next (v-seqs i))]
 			  (assoc v-seqs i rst)
@@ -35,17 +37,17 @@
 	[ position look-at up ]
 	(Camera. position look-at up))
 
-(defrecord Projection [ viewing-angle screen-distance width height background-color ])
+(defrecord Projection [ viewing-angle screen-distance width height background-colour ])
 
 (defn projection-create
-	[ viewing-angle screen-distance width height background-color ]
-	(Projection. viewing-angle screen-distance width height background-color))
+	[ viewing-angle screen-distance width height background-colour ]
+	(Projection. viewing-angle screen-distance width height background-colour))
 
-(defrecord Pixel [ coords color ])
+(defrecord Pixel [ coords colour ])
 
 (defn pixel-create
-	[ coords color ]
-	(Pixel. coords color))
+	[ coords colour ]
+	(Pixel. coords colour))
 
 (defrecord Rectangle [ top-left top-right bottom-left bottom-right ] )
 
@@ -100,8 +102,8 @@
 			vec-bottom-left
 			vec-bottom-right)))
 
-(defn- draw-single-coord
-	[ scene camera projection screen-rect pixel counter ]
+(defn draw-single-coord
+	[ objects lights camera projection screen-rect pixel counter ]
 	(let [ 	x					(+ (first pixel) 0.5)
 			y					(+ (first (rest pixel)) 0.5)
 			total  				(* (:width projection) (:height projection))
@@ -121,24 +123,25 @@
 			ray 				(geometry/ray-create
 									(:position camera)
 									screen-coord)
-			first-object		(object/first-intersecting-object scene ray)	]
+			first-object		(object/first-intersecting-object objects ray)	]
 		; increase the counter and print if increased by 1 percent
 		(send-off counter #(do	(if (not= 	(quot (* 100 %) total)
 											(quot (* 100 (inc %)) total))
 									(println (str "computing: " (quot (* 100 (inc %)) total) "%")))
 								(inc %)))
 		(if (nil? first-object)
-			(pixel-create pixel (:background-color projection))
-			(pixel-create pixel (.color-at first-object ray)))))
+			(pixel-create pixel (:background-colour projection))
+			(pixel-create pixel (.colour-at first-object objects lights ray)))))
 
 (defn draw-simple
 	"Draws the scene"
-	[ scene camera projection ]
+	[ objects lights camera projection ]
 	(let [ rect (screen-rect camera projection)
 		   counter (agent 0) ]
 		(pmap 
 			#(draw-single-coord
-				scene
+				objects 
+				lights
 				camera
 				projection
 				rect
@@ -157,7 +160,7 @@
 								(inc %)))
 		(.setRGB image		(first (:coords pixel))
 							(first (rest (:coords pixel)))
-							(.getRGB (:color pixel)))))
+							(.getRGB (material/colour-to-java  (:colour pixel))))))
 (defn save-as-png
 	"Saves pixels as a PNG"
 	[ filename projection pixels ]
@@ -183,7 +186,7 @@
 								(inc %)))
 		(.setRGB image 		(first (:coords pixel))
 							(first (rest (:coords pixel)))
-							(.getRGB (:color pixel)))))
+							(.getRGB (material/colour-to-java (:colour pixel))))))
 
 (defn show-realtime
 	[ projection pixels ]

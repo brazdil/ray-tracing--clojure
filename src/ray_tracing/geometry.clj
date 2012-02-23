@@ -1,8 +1,11 @@
 (ns ray-tracing.geometry)
 
-(defrecord Vector [x y z])
+(defrecord Vector [ #^Double x
+					#^Double y
+					#^Double z ])
 
-(defrecord Ray [point direction])
+(defrecord Ray [ #^Vector point 
+			     #^Vector direction ])
 
 (defn vec-create 
 	[ x y z ]
@@ -121,11 +124,12 @@
 
 (defn ray-create
 	[ point direction ]
-	(Ray. point direction))
+	(Ray. point (vec-normalize direction)))
 
 (defn ray-point
 	"Returns point on the ray line given by the multiple of lengths of
-	 the direction vector from the starting point"
+	 the direction vector from the starting point (which is normalized,
+	 so technically units)."
 	 [ ray param ]
 	 (vec-add
 	 	(:point ray)
