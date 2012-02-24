@@ -15,7 +15,9 @@
 					2
 					1024
 					768
-					material/colour-black ))
+					(material/colour-create 0.858823529		; light blue background
+											0.909803922
+											0.831372549 )))
 
 (def sphere1 	(object/sphere-create
 					(geometry/vec-create -1 0 7)
@@ -45,7 +47,7 @@
 					(material/material-create-simple
 						material/colour-gray)))
 
-(def light1		(object/light-create
+(def light1		(lighting/light-create
 					(geometry/vec-create 10 30 20)
 					material/colour-white))
 

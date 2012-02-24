@@ -1,7 +1,8 @@
 (ns ray-tracing.drawing
 	(:require [ray-tracing.geometry :as geometry])
 	(:require [ray-tracing.material :as material])
-	(:require [ray-tracing.object :as object]))
+	(:require [ray-tracing.object :as object])
+	(:require [ray-tracing.object-common :as object-common]))
 
 (defmacro dbg [x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
 ; (defmacro dbg [x] `(let [x# ~x] (println "dbg:" x#) x#))
@@ -123,7 +124,7 @@
 			ray 				(geometry/ray-create
 									(:position camera)
 									screen-coord)
-			first-object		(object/first-intersecting-object objects ray)	]
+			first-object		(object-common/first-intersecting-object objects ray)	]
 		; increase the counter and print if increased by 1 percent
 		(send-off counter #(do	(if (not= 	(quot (* 100 %) total)
 											(quot (* 100 (inc %)) total))
