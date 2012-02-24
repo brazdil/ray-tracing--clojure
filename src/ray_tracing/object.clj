@@ -1,4 +1,5 @@
 (ns ray-tracing.object
+	(:require [ray-tracing.math :as math])
 	(:require [ray-tracing.geometry :as geometry])
 	(:require [ray-tracing.object-common :as object-common])
 	(:require [ray-tracing.material :as material])
@@ -6,9 +7,61 @@
 
 (defmacro dbg [x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
 
+(deftype Composite
+	[ sub-objects ]
+	object-common/PObject
+		(debug [ this ]
+			(dorun (map #(.debug %) sub-objects))
+			this)
+		(translate [ this v ]
+			(Composite.
+				(map #(.translate % v) sub-objects)))
+		(rotateX [ this angle ]
+			(Composite.
+				(map #(.rotateX % angle) sub-objects)))
+		(rotateY [ this angle ]
+			(Composite.
+				(map #(.rotateY % angle) sub-objects)))
+		(rotateZ [ this angle ]
+			(Composite.
+				(map #(.rotateZ % angle) sub-objects)))
+		(scale [ this amount ]
+			(Composite.
+				(map #(.scale % amount) sub-objects)))
+		(intersect [ this ray ]
+			(reduce 	#(reduce conj %1 %2)
+						(map	#(.intersect % ray)
+								sub-objects)))
+		(colour-at [ this objects lights ray ]
+			(.colour-at
+				(object-common/first-intersecting-object 
+					sub-objects ray) 
+				objects 
+				lights 
+				ray)))
+		
+(defn composite-create
+	[ objects ]
+	(Composite. objects))
+
 (deftype Sphere
 	[ center radius material ]
 	object-common/PObject
+		(debug [ this ]
+			(do	
+				(dbg center)
+				(dbg radius)
+				this))
+		(translate [ this v ]
+			(Sphere. (geometry/vec-add center v) radius material))
+		(rotateX [ this angle ]
+			this)
+		(rotateY [ this angle ]
+			this)
+		(rotateZ [ this angle ]
+			this)
+		(scale [ this amount ]
+			(Sphere. center (* radius amount) material))
 		(intersect [ this ray ]
 			(let [ O_C  (geometry/vec-subtract (:point ray) center)
 				   a    (geometry/vec-dot-product 
@@ -44,12 +97,85 @@
 												center)))))))
 
 (defn sphere-create
-	[ origin radius material ]
-	(Sphere. origin radius material))
+	(	[ origin radius material ]
+		(Sphere. origin radius material))
+	(	[ radius material ]
+		(sphere-create (geometry/vec-create 0 0 0) radius material))
+	(	[ material ]
+		(sphere-create 1 material)))
 
-(deftype Parallelogram
-	[ origin v1 v2 material N d len-v1-sq len-v2-sq ]
+(deftype Rectangle
+	[ origin v1 v2 N material d len-v1-sq len-v2-sq ]
 	object-common/PObject
+		(debug [ this ]
+			(do	
+				(dbg origin)
+				(dbg v1)
+				(dbg v2)
+				(dbg N)
+				(dbg d)
+				this))
+		(translate [ this v ]
+			(let [ newOrigin 	(geometry/vec-add origin v) ]
+				(Rectangle. 
+					newOrigin 
+					v1 
+					v2 
+					N 
+					material 
+					(geometry/vec-dot-product N newOrigin)
+					len-v1-sq 
+					len-v2-sq)))
+		(rotateX [ this angle ]
+			(let [ 	newOrigin	(geometry/vec-rotate-x origin angle)
+					newN 		(geometry/vec-subtract
+									(geometry/vec-rotate-x
+										(geometry/vec-add N origin)
+										angle)
+								origin)				]
+			(Rectangle.
+				newOrigin
+				(geometry/vec-rotate-x v1 angle)
+				(geometry/vec-rotate-x v2 angle)
+				newN
+				material
+				(geometry/vec-dot-product newN newOrigin)
+				len-v1-sq
+				len-v2-sq)))
+		(rotateY [ this angle ]
+			(let [ 	newOrigin	(geometry/vec-rotate-y origin angle)
+					newN 		(geometry/vec-subtract
+									(geometry/vec-rotate-y
+										(geometry/vec-add N origin)
+										angle)
+								origin)				]
+			(Rectangle.
+				newOrigin
+				(geometry/vec-rotate-y v1 angle)
+				(geometry/vec-rotate-y v2 angle)
+				newN
+				material
+				(geometry/vec-dot-product newN newOrigin)
+				len-v1-sq
+				len-v2-sq)))
+		(rotateZ [ this angle ]
+			(let [ 	newOrigin	(geometry/vec-rotate-z origin angle)
+					newN 		(geometry/vec-subtract
+									(geometry/vec-rotate-z
+										(geometry/vec-add N origin)
+										angle)
+								origin)				]
+			(Rectangle.
+				newOrigin
+				(geometry/vec-rotate-z v1 angle)
+				(geometry/vec-rotate-z v2 angle)
+				newN
+				material
+				(geometry/vec-dot-product newN newOrigin)
+				len-v1-sq
+				len-v2-sq)))
+		(scale [ this amount ]
+			this)
 		(intersect [ this ray ]
 			(let [ t        (/	(-  d
 				       				(geometry/vec-dot-product N (:point ray)))
@@ -74,107 +200,65 @@
 											(object-common/first-intersection this ray))
 										N))))
 												
-(defn parallelogram-create-normal
-	[ origin v1 v2 N material]
-	(let [ 	N 			(geometry/vec-normalize N)
-			len-v1 		(geometry/vec-length v1)
-	       	len-v2 		(geometry/vec-length v2)
-			d 			(geometry/vec-dot-product N origin) ]
-	(Parallelogram. 	origin 
-						v1 
-						v2 
-						material
+(defn rectangle-create-normal
+	(	[ origin sizeX sizeY normal material ]
+		(let [ 	v1			(geometry/vec-create sizeX 0 0)
+				v2 			(geometry/vec-create 0 sizeY 0)
+				N 			(geometry/vec-normalize normal)
+				len-v1 		(geometry/vec-length v1)
+		       	len-v2 		(geometry/vec-length v2)
+				d 			(geometry/vec-dot-product N origin) ]
+		(Rectangle. 	origin 
+						v1
+						v2
 						N
+						material
 						d
 						(* len-v1 len-v1)
 						(* len-v2 len-v2) )))
-
-(defn parallelogram-create
-	[ origin v1 v2 material ]
-	(parallelogram-create-normal
-	 	origin
-		v1 
-		v2 
-       	(geometry/vec-normalize
-			(geometry/vec-vector-product v1 v2))
-		material))
-
+	(	[ sizeX sizeY normal material ]
+		(rectangle-create-normal geometry/vec-zero sizeX sizeY normal material)))
 
 (defn rectangle-create
-	[ origin v1 v2 material ]
-	(let 	[ 	dot12			(geometry/vec-dot-product v1 v2)	]
-		(if (and	(< dot12 object-common/epsilon)	(> dot12 object-common/minus-epsilon))
-			(parallelogram-create origin v1 v2 material)
-			(throw (new IllegalArgumentException "Vectors are not perpendicular")))))
-
-(defn rectangle-create-normal
-	[ origin v1 v2 N material ]
-	(let 	[ 	dot12			(geometry/vec-dot-product v1 v2)	]
-		(if (and	(< dot12 object-common/epsilon)	(> dot12 object-common/minus-epsilon))
-			(parallelogram-create-normal origin v1 v2 N material)
-			(throw (new IllegalArgumentException "Vectors are not perpendicular")))))
-
-(deftype Composite
-	[ sub-objects ]
-	object-common/PObject
-		(intersect [ this ray ]
-			(reduce 	#(reduce conj %1 %2)
-						(map	#(.intersect % ray)
-								sub-objects)))
-		(colour-at [ this objects lights ray ]
-			(.colour-at (object-common/first-intersecting-object sub-objects ray) objects lights ray)))
-		
-
-(defn parallelepiped-create
-	[ origin v1 v2 v3 material ]
-	(let [	origin-opposite		(geometry/vec-add
-									origin
-									(geometry/vec-add
-										v1
-										(geometry/vec-add
-											v2
-											v3)))
-			mv1					(geometry/vec-mult v1 -1)
-			mv2					(geometry/vec-mult v2 -1)
-			mv3					(geometry/vec-mult v3 -1) 		]
-	(Composite. 		[	(parallelogram-create
-								origin
-								v1
-								v2
-								material)
-							(parallelogram-create
-								origin
-								v1
-								v3
-								material)
-							(parallelogram-create
-								origin
-								v2
-								v3
-								material)
-							(parallelogram-create
-								origin-opposite
-								mv1
-								mv2
-								material)
-							(parallelogram-create
-								origin-opposite
-								mv1
-								mv3
-								material)
-							(parallelogram-create
-								origin-opposite
-								mv2
-								mv3
-								material)				])))
+	(	[ origin sizeX sizeY material ]
+		(rectangle-create-normal origin sizeX sizeY geometry/vec-z-pos material))
+	(	[ sizeX sizeY material ]
+		(rectangle-create geometry/vec-zero sizeX sizeY material)))
 
 (defn box-create
-	[ origin v1 v2 v3 material ]
-	(let 	[ 	dot12			(geometry/vec-dot-product v1 v2)
-				dot13			(geometry/vec-dot-product v1 v3)
-				dot23			(geometry/vec-dot-product v2 v3)	]
-		(if (and	(< dot12 object-common/epsilon)	(> dot12 object-common/minus-epsilon)
-					(< dot13 object-common/epsilon)	(> dot13 object-common/minus-epsilon)
-					(< dot23 object-common/epsilon)	(> dot23 object-common/minus-epsilon))
-			(parallelepiped-create origin v1 v2 v3 material)
-			(throw (new IllegalArgumentException "Vectors are not perpendicular")))))
+	(	[ origin sizeX sizeY sizeZ material ]
+		(composite-create	[	(rectangle-create-normal
+									origin
+									sizeX
+									sizeY
+									geometry/vec-z-neg
+									material)
+								(rectangle-create-normal
+									(geometry/vec-add
+										origin
+										(geometry/vec-create 0 0 sizeZ))
+									sizeX
+									sizeY
+									geometry/vec-y-pos
+									material) ]))
+	(	[ sizeX sizeY sizeZ material ]
+		(box-create geometry/vec-zero sizeX sizeY sizeZ material)))
+
+(defn chessboard-create
+	"Expects to be given the origin and size of the corner box and creates
+	 a chessboard of given size from it."
+	(	[ origin rows cols thickness material-black material-white ]
+		(.. (composite-create
+					(map 	#(let [ xpos (first %) ypos (first (rest %)) ]
+								(.. (rectangle-create-normal
+										1 1
+										geometry/vec-z-neg
+										(if (even? (+ xpos ypos))
+											material-black
+											material-white))
+									(rotateX math/PIover2) (translate (geometry/vec-create xpos 0 ypos))))
+							(math/cartesian-product (range 0 rows) (range 0 cols))))
+			(translate origin)))
+	( 	[ rows cols thickness material-black material-white ]
+		(chessboard-create geometry/vec-zero rows cols thickness material-black material-white)))
+

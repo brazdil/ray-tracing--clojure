@@ -4,6 +4,13 @@
 
 (defprotocol PObject
 	"Interface that each object in the scene has to implement"
+	(debug [ this ])
+	(translate [ this v ]
+		"Translates the object by vector v")
+	(rotateX [ this angle ])
+	(rotateY [ this angle ])
+	(rotateZ [ this angle ])
+	(scale [ this amount ])
 	(intersect [ this ray ] 
 		"Returns list of points of intersection of the object with given ray.
 		 For convenience these are returned as a single scalar, which is

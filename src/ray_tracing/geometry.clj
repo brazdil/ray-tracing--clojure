@@ -11,6 +11,14 @@
 	[ x y z ]
 	(Vector. x y z))
 
+(def vec-zero 	(vec-create 0 0 0))
+(def vec-x-pos 	(vec-create 1 0 0))
+(def vec-x-neg 	(vec-create -1 0 0))
+(def vec-y-pos 	(vec-create 0 1 0))
+(def vec-y-neg 	(vec-create 0 -1 0))
+(def vec-z-pos 	(vec-create 0 0 1))
+(def vec-z-neg 	(vec-create 0 0 -1))
+
 (defn vec-add
 	"Adds two vectors"
 	[ v1 v2 ]
@@ -81,6 +89,26 @@
 ; (defn vec-to-matrix
 ; 	[ v ]
 ; 	[ [(:x v)] [(:y v)] [(:z v)] ])
+
+(defn vec-rotate-x
+	"Rotation around the x-axis"
+	[ v angle ]
+	(let [ angle-sin	(java.lang.Math/sin angle)
+	       angle-cos	(java.lang.Math/cos angle) ]
+		(vec-create
+			(:x v)
+			(- (* (:y v) angle-cos) (* (:z v) angle-sin))
+			(+ (* (:y v) angle-sin) (* (:z v) angle-cos)))))
+
+(defn vec-rotate-y
+	"Rotation around the y-axis"
+	[ v angle ]
+	(let [ angle-sin	(java.lang.Math/sin angle)
+	       angle-cos	(java.lang.Math/cos angle) ]
+		(vec-create
+			(+ (* (:x v) angle-cos) (* (:z v) angle-sin))
+			(:y v)
+			(- (* (:z v) angle-cos) (* (:x v) angle-sin)))))
 
 (defn vec-rotate-z
 	"Rotation around the z-axis"

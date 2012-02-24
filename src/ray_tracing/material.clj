@@ -9,8 +9,12 @@
 (defrecord Material [ colour-diffuse colour-specular ])
 
 (defn colour-create
-	[ r g b ]
-	(Colour. r g b))
+	(	[ r g b ]
+		(Colour. r g b))
+	(	[ hex ]
+		(colour-create 	(/ (bit-and (bit-shift-right hex 16) 0xFF) 255.0)
+						(/ (bit-and (bit-shift-right hex 8) 0xFF) 255.0)
+						(/ (bit-and hex 0xFF) 255.0))))
 
 (def colour-black 	(colour-create    0    0    0))
 (def colour-white 	(colour-create    1    1    1))
@@ -18,6 +22,10 @@
 (def colour-green 	(colour-create    0    1    0))
 (def colour-blue 	(colour-create    0    0    1))
 (def colour-gray 	(colour-create 0.25 0.25 0.25))
+
+(def colour-pastel-light-gray 	(colour-create 0xc3c4be))
+(def colour-pastel-white	 	(colour-create 0xe8e8e9))
+(def colour-pastel-cyan		 	(colour-create 0x69c9ea))
 
 (defn colour-to-java
 	[ colour ]
