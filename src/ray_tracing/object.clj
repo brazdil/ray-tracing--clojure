@@ -7,7 +7,7 @@
 
 (defmacro dbg [x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
 
-(deftype Composite
+(defrecord Composite
 	[ sub-objects ]
 	object-common/PObject
 		(debug [ this ]
@@ -47,7 +47,14 @@
 	[ objects ]
 	(Composite. objects))
 
-(deftype Sphere
+(defn composite-merge
+	[ comp1 comp2 ]	
+	(composite-create
+		(reduce 	conj
+					(:sub-objects comp1)
+					(:sub-objects comp2))))
+
+(defrecord Sphere
 	[ center radius inside-out material ]
 	object-common/PObject
 		(debug [ this ]
@@ -109,7 +116,7 @@
 	(	[ material ]
 		(sphere-create 1 material)))
 
-(deftype Rectangle
+(defrecord Rectangle
 	[ origin v1 v2 N material d len-v1-sq len-v2-sq ]
 	object-common/PObject
 		(debug [ this ]
@@ -280,17 +287,64 @@
 	"Expects to be given the origin and size of the corner box and creates
 	 a chessboard of given size from it."
 	(	[ origin rows cols thickness material-black material-white ]
-		(.. (composite-create
-					(map 	#(let [ xpos (first %) ypos (first (rest %)) ]
-								(.. (rectangle-create-normal
+		(.. (reduce composite-merge
+				(composite-create
+					(map 	#(let [	xpos 		(first %) 
+									ypos 		(first (rest %))
+
+									pos 		(geometry/vec-create xpos 0 ypos)
+									material 	(if (odd? (+ xpos ypos))
+													material-black
+													material-white) ]
+								(..	(rectangle-create-normal
 										1 1
 										geometry/vec-z-neg
-										(if (even? (+ xpos ypos))
-											material-black
-											material-white))
-									(rotateX math/PIover2) (translate (geometry/vec-create xpos 0 ypos))))
-							(math/cartesian-product (range 0 rows) (range 0 cols))))
-			(translate origin)))
+										material)
+									(rotateX math/PIover2) (translate pos)))
+							(math/cartesian-product (range 0 cols) (range 0 rows))))
+				[ (composite-create
+					(map 	#(let [ material-front 	(if (odd? %)
+														material-black
+														material-white)
+									material-back 	(if (even? %)
+														material-black
+														material-white)					
+
+									rect-front 		(.. (rectangle-create-normal
+															1 thickness
+															geometry/vec-z-neg
+															material-front)
+														(translate (geometry/vec-create % (- thickness) 0)))
+									rect-back 		(.. (rectangle-create-normal
+															1 thickness
+															geometry/vec-z-pos
+															material-back)
+														(translate (geometry/vec-create % (- thickness) rows))) 	]
+								(composite-create [ rect-front rect-back ]))
+							(range 0 cols)))
+				(composite-create
+					(map 	#(let [ material-front 	(if (odd? %)
+														material-black
+														material-white)
+									material-back 	(if (even? %)
+														material-black
+														material-white)					
+
+									rect-front 		(.. (rectangle-create-normal
+															1 thickness
+															geometry/vec-z-pos
+															material-front)
+														(rotateY (- math/PIover2))
+														(translate (geometry/vec-create 0 (- thickness) %)))
+									rect-back 		(.. (rectangle-create-normal
+															1 thickness
+															geometry/vec-z-neg
+															material-back)
+														(rotateY (- math/PIover2))
+														(translate (geometry/vec-create cols (- thickness) %))) 	]
+								(composite-create [ rect-front rect-back ]))
+							(range 0 rows))) ])
+			(translate origin) ))
 	( 	[ rows cols thickness material-black material-white ]
 		(chessboard-create geometry/vec-zero rows cols thickness material-black material-white)))
 

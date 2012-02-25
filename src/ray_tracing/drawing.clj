@@ -61,8 +61,8 @@
 											-2)
 			vec-upwards				(geometry/vec-mult
 										(geometry/vec-rotate
-											(dbg vec-sideways)
-											(dbg vec-direction)
+											vec-sideways
+											vec-direction
 											(- math/PIover2))
 										(/ (:height projection) (:width projection)))
 
@@ -74,7 +74,7 @@
 										vec-twice-sideways)
 			vec-bottom-left			(geometry/vec-subtract
 										vec-edge-left
-										(dbg vec-upwards))
+										vec-upwards)
 			vec-bottom-right		(geometry/vec-add
 										vec-bottom-left
 										vec-twice-sideways) ]
