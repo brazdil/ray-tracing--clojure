@@ -7,15 +7,15 @@
 	(:require [ray-tracing.object :as object]))
 
 (def camera 	(drawing/camera-create
-					(geometry/vec-create 1 2 -3)
-					(geometry/vec-create -4 2 5)
+					(geometry/vec-create 1.0 1.6 -3.7)
+					(geometry/vec-create -5 1.8 5)
 					(geometry/vec-create 0 1 0)))
 
 (def projection	(drawing/projection-create
 					(java.lang.Math/toRadians 60)
 					2
-					800
-					600
+					1920
+					1080
 					(material/colour-create 0.858823529		; light blue background
 											0.909803922
 											0.831372549 )))
