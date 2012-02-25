@@ -61,9 +61,9 @@
 											-2)
 			vec-upwards				(geometry/vec-mult
 										(geometry/vec-rotate
-											vec-sideways
-											vec-direction
-											(/ java.lang.Math/PI -2))
+											(dbg vec-sideways)
+											(dbg vec-direction)
+											(- math/PIover2))
 										(/ (:height projection) (:width projection)))
 
 			vec-top-left			(geometry/vec-add 
@@ -74,7 +74,7 @@
 										vec-twice-sideways)
 			vec-bottom-left			(geometry/vec-subtract
 										vec-edge-left
-										vec-upwards)											
+										(dbg vec-upwards))
 			vec-bottom-right		(geometry/vec-add
 										vec-bottom-left
 										vec-twice-sideways) ]

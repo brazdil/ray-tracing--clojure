@@ -11,6 +11,7 @@
 	(rotateY [ this angle ])
 	(rotateZ [ this angle ])
 	(scale [ this amount ])
+	(flip-normal [ this ])
 	(intersect [ this ray ] 
 		"Returns list of points of intersection of the object with given ray.
 		 For convenience these are returned as a single scalar, which is

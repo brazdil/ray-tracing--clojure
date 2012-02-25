@@ -7,7 +7,7 @@
 	(:require [ray-tracing.object :as object]))
 
 (def camera 	(drawing/camera-create
-					(geometry/vec-create 1.0 1.6 -3.7)
+					(geometry/vec-create 1.0 1.9 -3.7)
 					(geometry/vec-create -5 1.8 5)
 					(geometry/vec-create 0 1 0)))
 
@@ -15,10 +15,8 @@
 					(java.lang.Math/toRadians 60)
 					2
 					1920
-					1080
-					(material/colour-create 0.858823529		; light blue background
-											0.909803922
-											0.831372549 )))
+					1440
+					material/colour-pastel-light-blue))
 
 (def sphere 	(object/sphere-create
 					(geometry/vec-create -0.5 0.6 4)
@@ -26,13 +24,22 @@
 					(material/material-create-simple
 						material/colour-pastel-cyan )))
 
-; (def box1		(object/box-create
-; 					(geometry/vec-create  1   -1   4)
-; 					1
-; 					0.75
-; 					1
-; 					(material/material-create-simple
-; 						material/colour-green)))
+(def box1		(object/box-create
+					(geometry/vec-create  -2.5   0   5.5)
+ 					2.5
+ 					1.4
+ 					1
+ 					(material/material-create-simple
+ 						material/colour-pastel-brown)))
+
+(def box2		(object/box-create
+					(geometry/vec-create  -4.2   0   0.6)
+ 					1.8
+ 					1.8
+ 					1.8
+ 					(material/material-create-simple
+ 						material/colour-pastel-blue)))
+
 
 (def chessboard 	(object/chessboard-create 
 						(geometry/vec-create -8 0 0)
@@ -57,10 +64,10 @@
 ; 					(geometry/vec-create -5 -1 0))))
 
 (def light1		(lighting/light-create
-					(geometry/vec-create 10 30 20)
+					(geometry/vec-create 6 8 -4)
 					material/colour-white))
 
-(def objects [ sphere chessboard ])
+(def objects [ sphere box1 box2 chessboard ])
 
 (def lights [ light1 ])
 

@@ -28,6 +28,9 @@
 		(scale [ this amount ]
 			(Composite.
 				(map #(.scale % amount) sub-objects)))
+		(flip-normal [ this ]
+			(Composite.
+				(map #(.flip-normal %) sub-objects)))
 		(intersect [ this ray ]
 			(reduce 	#(reduce conj %1 %2)
 						(map	#(.intersect % ray)
@@ -45,7 +48,7 @@
 	(Composite. objects))
 
 (deftype Sphere
-	[ center radius material ]
+	[ center radius inside-out material ]
 	object-common/PObject
 		(debug [ this ]
 			(do	
@@ -53,7 +56,7 @@
 				(dbg radius)
 				this))
 		(translate [ this v ]
-			(Sphere. (geometry/vec-add center v) radius material))
+			(Sphere. (geometry/vec-add center v) radius inside-out material))
 		(rotateX [ this angle ]
 			this)
 		(rotateY [ this angle ]
@@ -61,7 +64,9 @@
 		(rotateZ [ this angle ]
 			this)
 		(scale [ this amount ]
-			(Sphere. center (* radius amount) material))
+			(Sphere. center (* radius amount) inside-out material))
+		(flip-normal [ this ]
+			(Sphere. center radius (not inside-out) material))
 		(intersect [ this ray ]
 			(let [ O_C  (geometry/vec-subtract (:point ray) center)
 				   a    (geometry/vec-dot-product 
@@ -92,13 +97,13 @@
 										lights
 										intersection
 										(geometry/vec-normalize
-											(geometry/vec-subtract
-												intersection
-												center)))))))
+											(if inside-out
+												(geometry/vec-subtract center intersection)
+												(geometry/vec-subtract intersection center))))))))
 
 (defn sphere-create
 	(	[ origin radius material ]
-		(Sphere. origin radius material))
+		(Sphere. origin radius false material))
 	(	[ radius material ]
 		(sphere-create (geometry/vec-create 0 0 0) radius material))
 	(	[ material ]
@@ -176,6 +181,16 @@
 				len-v2-sq)))
 		(scale [ this amount ]
 			this)
+		(flip-normal [ this ]
+			(Rectangle.
+				origin
+				v1
+				v2
+				(geometry/vec-subtract geometry/vec-zero N)
+				material
+				(- d)
+				len-v1-sq
+				len-v2-sq))
 		(intersect [ this ray ]
 			(let [ t        (/	(-  d
 				       				(geometry/vec-dot-product N (:point ray)))
@@ -227,20 +242,37 @@
 
 (defn box-create
 	(	[ origin sizeX sizeY sizeZ material ]
-		(composite-create	[	(rectangle-create-normal
-									origin
-									sizeX
-									sizeY
-									geometry/vec-z-neg
-									material)
+		(let [ 	rect-xy1 	(rectangle-create-normal
+								sizeX
+								sizeY
+								geometry/vec-z-neg
+								material)
+				rect-xy2	(.. rect-xy1
+								(flip-normal)
+								(translate (geometry/vec-create 0 0 sizeZ)))
+				rect-xz1 	(.rotateX
 								(rectangle-create-normal
-									(geometry/vec-add
-										origin
-										(geometry/vec-create 0 0 sizeZ))
 									sizeX
+									sizeZ
+									geometry/vec-z-pos
+									material)
+								math/PIover2)
+				rect-xz2	(.. rect-xz1
+								(flip-normal)
+								(translate (geometry/vec-create 0 sizeY 0)))
+				rect-yz1 	(.rotateY
+								(rectangle-create-normal
+									sizeZ
 									sizeY
-									geometry/vec-y-pos
-									material) ]))
+									geometry/vec-z-pos
+									material)
+								(- math/PIover2))
+				rect-yz2	(.. rect-yz1
+								(flip-normal)
+								(translate (geometry/vec-create sizeX 0 0)))	]
+		(.translate
+			(composite-create	[ rect-xy1 rect-xz1 rect-yz1 rect-xy2 rect-xz2 rect-yz2 ])
+			origin)))
 	(	[ sizeX sizeY sizeZ material ]
 		(box-create geometry/vec-zero sizeX sizeY sizeZ material)))
 

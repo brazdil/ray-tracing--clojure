@@ -23,9 +23,12 @@
 (def colour-blue 	(colour-create    0    0    1))
 (def colour-gray 	(colour-create 0.25 0.25 0.25))
 
-(def colour-pastel-light-gray 	(colour-create 0xc3c4be))
-(def colour-pastel-white	 	(colour-create 0xe8e8e9))
+(def colour-pastel-light-gray 	(colour-create 0xc3c4be)) ; e8e8e9
+(def colour-pastel-white	 	(colour-create 0xe2e3dc)) ; 
 (def colour-pastel-cyan		 	(colour-create 0x69c9ea))
+(def colour-pastel-brown	 	(colour-create 0xb4b054)); 9c9a5d
+(def colour-pastel-blue	 		(colour-create 0x5670b7))
+(def colour-pastel-light-blue	(colour-create 0.858823529 0.909803922 0.831372549))
 
 (defn colour-to-java
 	[ colour ]
