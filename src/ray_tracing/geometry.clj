@@ -121,7 +121,7 @@
 			(:z v))))
 
 (defn vec-rotate
-	"Rotates the vector around an arbitrary axis (intersecting the origin)"
+	"Rotates the vector around an arbitrary axis (intersecting the origin). The axis has to be a unit vector."
 	[ v1 axis angle ]
 	(let [ x			(:x v1)
 	       y			(:y v1)
@@ -147,7 +147,7 @@
 			(+ 	(* w uxPvyPwz angle-1Mcos) 
 				(* z angle-cos) 
 				(* 
-					(- (* u z) (* v x) )
+					(- (* u y) (* v x) )
 					angle-sin)))))
 
 (defn ray-create
