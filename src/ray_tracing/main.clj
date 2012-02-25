@@ -14,8 +14,8 @@
 (def projection	(drawing/projection-create
 					(java.lang.Math/toRadians 60)
 					2
-					1920
-					1440
+					320
+					240
 					material/colour-pastel-light-blue))
 
 (def sphere 	(object/sphere-create
@@ -67,12 +67,12 @@
 					(geometry/vec-create 6 8 -4)
 					material/colour-white))
 
-(def objects [ sphere box1 box2 chessboard ])
+(def scene 		(object/composite-create [ sphere box1 box2 chessboard ]))
 
 (def lights [ light1 ])
 
 (defn test-draw []
-	(drawing/draw-simple objects lights camera projection))
+	(drawing/draw-simple scene lights camera projection))
 
 (defn test-save []
 	(drawing/save-as-png 	"test.png"

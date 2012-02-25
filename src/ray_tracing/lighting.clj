@@ -10,8 +10,8 @@
 	(Light. position colour))
 
 (defn- light-compute-diffuse-single
-	[ objects light point normal ]
-	(if (object-common/is-intersected objects point (:position light))
+	[ root-object light point normal ]
+	(if (object-common/is-intersected root-object point (:position light))
 		material/colour-black
 		(let [ angle-dot-prod 	(geometry/vec-dot-product
 									normal
@@ -25,7 +25,7 @@
 			 									angle-dot-prod)))))
 
 (defn light-compute-diffuse
-	[ objects lights point normal ]
+	[ root-object lights point normal ]
 	(material/colour-average
-		(map	#(light-compute-diffuse-single objects % point normal)
+		(map	#(light-compute-diffuse-single root-object % point normal)
 				lights)))

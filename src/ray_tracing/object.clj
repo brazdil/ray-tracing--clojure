@@ -7,6 +7,43 @@
 
 (defmacro dbg [x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
 
+(defn- first-intersecting-struct
+	"Returns a structure with the first object intesected by the ray,
+	 or nil if there wasn't any intersection."
+	[ objects ray ]
+	(reduce 	#(if (nil? (:first-intersect %2))
+					%1
+					(if (nil? %1)
+						%2
+						(if (< (:first-intersect %1) (:first-intersect %2))
+							%1
+							%2)))
+				nil
+				(map 	#(if true 
+							{:object %, 
+							 :first-intersect 
+							 	(object-common/first-intersection % ray)}) 
+						objects)))
+
+(defn first-intersecting-object
+	"Returns the object that is first hit by the ray, or nil if there isn't any."
+	[ objects ray ]
+	(let [ first-struct		(first-intersecting-struct objects ray)	]
+		(if (or 	(nil? first-struct)
+					(< (:first-intersect first-struct) object-common/epsilon))
+			nil
+			(:object first-struct))))
+
+(defn first-intersecting-distance
+	"Returns the distance to first object hit by the ray (in units), 
+	 or +INFINITY if there isn't any."
+	[ objects ray ]
+	(let [ first-struct		(first-intersecting-struct objects ray)	]
+		(if (or 	(nil? first-struct)
+					(< (:first-intersect first-struct) object-common/epsilon))
+			java.lang.Double/POSITIVE_INFINITY
+			(:first-intersect first-struct))))
+
 (defrecord Composite
 	[ sub-objects ]
 	object-common/PObject
@@ -35,11 +72,11 @@
 			(reduce 	#(reduce conj %1 %2)
 						(map	#(.intersect % ray)
 								sub-objects)))
-		(colour-at [ this objects lights ray ]
+		(colour-at [ this root-object lights ray ]
 			(.colour-at
-				(object-common/first-intersecting-object 
+				(first-intersecting-object 
 					sub-objects ray) 
-				objects 
+				root-object 
 				lights 
 				ray)))
 		
@@ -94,13 +131,13 @@
 						; two intersections
 						[ (/ (+ (- b) (java.lang.Math/sqrt d)) (* 2 a))
 						  (/ (- (- b) (java.lang.Math/sqrt d)) (* 2 a)) ]))))
-		(colour-at [ this objects lights ray ]
+		(colour-at [ this root-object lights ray ]
 			(let [ intersection 	(geometry/ray-point 	
 										ray
 										(object-common/first-intersection this ray)) ]
 			(material/material-mix 	material
 									(lighting/light-compute-diffuse
-										objects
+										root-object
 										lights
 										intersection
 										(geometry/vec-normalize
@@ -212,10 +249,10 @@
 							(>= e2 0) (<= e2 len-v2-sq))
 					[ t ]
 					[ ])))
-		(colour-at [ this objects lights ray ]
+		(colour-at [ this root-object lights ray ]
 			(material/material-mix 	material
 									(lighting/light-compute-diffuse
-										objects
+										root-object
 										lights
 										(geometry/ray-point 	
 											ray

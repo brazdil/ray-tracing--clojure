@@ -9,9 +9,13 @@
 ; (defmacro dbg [x] `(let [x# ~x] (println "dbg:" x#) x#))
 
 (defn- pixels-seq
-  "Returns coordiantes of all pixels in the screen"
-  [width height]
-  (math/cartesian-product (range 0 width) (range 0 height)))
+	"Returns coordiantes of all pixels in the screen"
+	[width height]
+	(math/cartesian-product (range 0 width) (range 0 height)))
+
+(defn- subpixels-seq
+	[ sampling ]
+	(math/cartesian-product (range 0 sampling) (range 0 sampling)))
 
 (defrecord Camera [position look-at up])
 
@@ -31,11 +35,11 @@
 	[ coords colour ]
 	(Pixel. coords colour))
 
-(defrecord Rectangle [ top-left top-right bottom-left bottom-right ] )
+(defrecord ScreenRectangle [ top-left top-right bottom-left bottom-right ] )
 
-(defn rectangle-create
+(defn screen-rect-create
 	[ top-left top-right bottom-left bottom-right ]
-	(Rectangle. top-left top-right bottom-left bottom-right))
+	(ScreenRectangle. top-left top-right bottom-left bottom-right))
 
 (defn screen-rect
 	"Returns the coordinates of screen's rectangle's vertices. 
@@ -78,14 +82,14 @@
 			vec-bottom-right		(geometry/vec-add
 										vec-bottom-left
 										vec-twice-sideways) ]
-		(rectangle-create 
+		(screen-rect-create 
 			vec-top-left
 			vec-top-right
 			vec-bottom-left
 			vec-bottom-right)))
 
 (defn draw-single-coord
-	[ objects lights camera projection screen-rect pixel counter ]
+	[ root-object lights camera projection screen-rect pixel counter ]
 	(let [ 	x					(+ (first pixel) 0.5)
 			y					(+ (first (rest pixel)) 0.5)
 			total  				(* (:width projection) (:height projection))
@@ -105,25 +109,25 @@
 			ray 				(geometry/ray-create
 									(:position camera)
 									screen-coord)
-			first-object		(object-common/first-intersecting-object objects ray)	]
+			intersections		(.intersect root-object ray) ]
 		; (println pixel)
 		; increase the counter and print if increased by 1 percent
 		(send-off counter #(do	(if (not= 	(quot (* 100 %) total)
 											(quot (* 100 (inc %)) total))
 									(println (str "computing: " (quot (* 100 (inc %)) total) "%")))
 								(inc %)))
-		(if (nil? first-object)
+		(if (empty? intersections)
 			(pixel-create pixel (:background-colour projection))
-			(pixel-create pixel (.colour-at first-object objects lights ray)))))
+			(pixel-create pixel (.colour-at root-object root-object lights ray)))))
 
 (defn draw-simple
 	"Draws the scene"
-	[ objects lights camera projection ]
+	[ root-object lights camera projection ]
 	(let [ rect (screen-rect camera projection)
 		   counter (agent 0) ]
 		(map 
 			#(draw-single-coord
-				objects 
+				root-object
 				lights
 				camera
 				projection
