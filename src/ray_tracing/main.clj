@@ -5,13 +5,14 @@
 	(:require [ray-tracing.material :as material])
 	(:require [ray-tracing.lighting :as lighting])
 	(:require [ray-tracing.output :as output])
+	(:require [ray-tracing.network :as network])
 	(:require [ray-tracing.object :as object]))
 
 (def projection	(drawing/projection-create
 					(java.lang.Math/toRadians 60)
 					2
-					1920
-					1440					
+					1
+					1
 					(drawing/camera-create
 						(geometry/vec-create 1.0 1.9 -3.7)
 						(geometry/vec-create -5 1.8 5)
@@ -71,14 +72,33 @@
 
 (def lights [ light1 ])
 
-(defn test-draw []
-	(drawing/generate-pixels scene lights projection (drawing/get-fn-antialiased 4)))
+(def computer-localhost (network/computer-create "localhost" "127.0.0.1" 9999))
+(def computer-pwf (network/computer-create "linux.pwf.cl.cam.ac.uk" "193.60.95.68" 9999))
+(def computer-strelec (network/computer-create "strelec" "89.102.181.190" 9999))
+(def computers [ computer-localhost computer-pwf computer-strelec ])
 
-(defn test-save []
+(defn draw-network []
+	(do 
+		(network/check-computers computers)
+		(network/generate-pixels 
+			scene 
+			lights 
+			projection 
+			(drawing/get-fn-antialiased-parallel 4)
+			computers)))
+
+(defn draw-local []
+	(drawing/generate-pixels 
+		scene 
+		lights 
+		projection 
+		(drawing/get-fn-antialiased 4)))
+
+(defn test-save [ pixels ]
 	(output/png		"test.png"
 					projection
-					(test-draw)))
+					pixels))
 
-(defn test-realtime []
+(defn test-realtime [ pixels ]
 	(output/realtime 	projection
-						(test-draw)))
+						pixels))

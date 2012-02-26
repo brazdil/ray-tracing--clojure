@@ -1,6 +1,6 @@
 (ns ray-tracing.geometry)
 
-(set! *warn-on-reflection* true)
+; (set! *warn-on-reflection* true)
 
 (defrecord Vector [ ^Double x
 					^Double y

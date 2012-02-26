@@ -8,12 +8,12 @@
 (defmacro dbg [x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
 ; (defmacro dbg [x] `(let [x# ~x] (println "dbg:" x#) x#))
 
-(defn- pixels-seq
+(defn pixels-seq
 	"Returns coordiantes of all pixels in the screen"
 	[width height]
 	(math/cartesian-product (range 0 width) (range 0 height)))
 
-(defn- subpixels-seq
+(defn subpixels-seq
 	[ sampling ]
 	(math/cartesian-product (range 0 sampling) (range 0 sampling)))
 
@@ -100,14 +100,14 @@
 	(Pixel. coords colour))
 
 (defn get-pixel-classic
-	[ root-object lights projection counter coords ]
+	[ root-object lights projection coords ]
 	(let [ 	camera 				(:camera projection)
 			screen-rect 		(:screen-rect projection)
 
 			x					(+ (first coords) 0.5)
 			y					(+ (first (rest coords)) 0.5)
 
-			total  				(* (:width projection) (:height projection))
+			; total  				(* (:width projection) (:height projection))
 			screen-coord		(geometry/vec-add
 									(geometry/vec-add
 										(geometry/vec-mult
@@ -127,10 +127,10 @@
 			intersections		(.intersect root-object ray) ]
 		; (println coords)
 		; increase the counter and print if increased by 1 percent
-		(send-off counter #(do	(if (not= 	(quot (* 100 %) total)
-											(quot (* 100 (inc %)) total))
-									(println (str "computing: " (quot (* 100 (inc %)) total) "%")))
-								(inc %)))
+		; (send-off counter #(do	(if (not= 	(quot (* 100 %) total)
+		; 									(quot (* 100 (inc %)) total))
+		; 							(println (str "computing: " (quot (* 100 (inc %)) total) "%")))
+		; 						(inc %)))
 		(if (empty? intersections)
 			(pixel-create coords (:background-colour projection))
 			(pixel-create coords (.colour-at root-object root-object lights ray)))))
@@ -142,13 +142,12 @@
 	  (+ (/ (+ (first (rest subpixel)) (rand)) sampling) -0.5 (first (rest coords))) ])
 
 (defn get-pixel-antialiased
-	[ sampling root-object lights projection counter coords ]
+	[ map-fn sampling root-object lights projection coords ]
 	(do 
-		(send-off counter #(+ 1 (- % (* sampling sampling))))
 		(pixel-create
 			coords
 			(material/colour-average
-				(map 	#(:colour (get-pixel-classic root-object lights projection counter %))
+				(map-fn	#(:colour (get-pixel-classic root-object lights projection %))
 						(map #(subpixel-randomization sampling coords %) (subpixels-seq sampling)))))))
 
 (defn get-fn-classic
@@ -157,19 +156,21 @@
 
 (defn get-fn-antialiased
 	[ sampling ]
-	(partial get-pixel-antialiased sampling))
+	(partial get-pixel-antialiased map sampling))
+
+(defn get-fn-antialiased-parallel
+	[ sampling ]
+	(partial get-pixel-antialiased pmap sampling))
 	
 (defn generate-pixels
 	"Draws the scene"
 	[ root-object lights projection func ]
-	(let [ counter (agent 0) ]
-		(pmap 
-			#(func
-				root-object
-				lights
-				projection
-				counter
-				% ) 
-			(pixels-seq
-				(:width projection) 
-				(:height projection)))))
+	(pmap 
+		#(func
+			root-object
+			lights
+			projection
+			% ) 
+		(pixels-seq
+			(:width projection) 
+			(:height projection))))
