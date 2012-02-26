@@ -163,7 +163,7 @@
 	"Draws the scene"
 	[ root-object lights projection func ]
 	(let [ counter (agent 0) ]
-		(map 
+		(pmap 
 			#(func
 				root-object
 				lights
