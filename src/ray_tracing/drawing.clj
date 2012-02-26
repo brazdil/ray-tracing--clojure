@@ -140,7 +140,7 @@
 	[ root-object lights projection ]
 	(let [ counter (agent 0) ]
 		(pmap 
-			#(draw-single-coord
+			#(get-pixel
 				root-object
 				lights
 				projection
