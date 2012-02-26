@@ -1,11 +1,13 @@
 (ns ray-tracing.geometry)
 
-(defrecord Vector [ #^Double x
-					#^Double y
-					#^Double z ])
+(set! *warn-on-reflection* true)
 
-(defrecord Ray [ #^Vector point 
-			     #^Vector direction ])
+(defrecord Vector [ ^Double x
+					^Double y
+					^Double z ])
+
+(defrecord Ray [ ^Vector point 
+			     ^Vector direction ])
 
 (defn vec-create 
 	[ x y z ]

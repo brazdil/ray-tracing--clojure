@@ -10,8 +10,8 @@
 (def projection	(drawing/projection-create
 					(java.lang.Math/toRadians 60)
 					2
-					320
-					240
+					1920
+					1440					
 					(drawing/camera-create
 						(geometry/vec-create 1.0 1.9 -3.7)
 						(geometry/vec-create -5 1.8 5)
@@ -72,7 +72,7 @@
 (def lights [ light1 ])
 
 (defn test-draw []
-	(drawing/generate-pixels scene lights projection))
+	(drawing/generate-pixels scene lights projection (drawing/get-fn-antialiased 4)))
 
 (defn test-save []
 	(output/png		"test.png"

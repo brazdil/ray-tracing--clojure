@@ -99,7 +99,7 @@
 	[ coords colour ]
 	(Pixel. coords colour))
 
-(defn get-pixel
+(defn get-pixel-classic
 	[ root-object lights projection counter coords ]
 	(let [ 	camera 				(:camera projection)
 			screen-rect 		(:screen-rect projection)
@@ -135,12 +135,36 @@
 			(pixel-create coords (:background-colour projection))
 			(pixel-create coords (.colour-at root-object root-object lights ray)))))
 
+(defn- subpixel-randomization 
+	"Given a subpixel, it randomizes its coordinate"
+	[ sampling coords subpixel ] 
+	[ (+ (/ (+ (first subpixel) (rand)) sampling) -0.5 (first coords))
+	  (+ (/ (+ (first (rest subpixel)) (rand)) sampling) -0.5 (first (rest coords))) ])
+
+(defn get-pixel-antialiased
+	[ sampling root-object lights projection counter coords ]
+	(do 
+		(send-off counter #(+ 1 (- % (* sampling sampling))))
+		(pixel-create
+			coords
+			(material/colour-average
+				(map 	#(:colour (get-pixel-classic root-object lights projection counter %))
+						(map #(subpixel-randomization sampling coords %) (subpixels-seq sampling)))))))
+
+(defn get-fn-classic
+	[ ]
+	get-pixel-classic)
+
+(defn get-fn-antialiased
+	[ sampling ]
+	(partial get-pixel-antialiased sampling))
+	
 (defn generate-pixels
 	"Draws the scene"
-	[ root-object lights projection ]
+	[ root-object lights projection func ]
 	(let [ counter (agent 0) ]
-		(pmap 
-			#(get-pixel
+		(map 
+			#(func
 				root-object
 				lights
 				projection
