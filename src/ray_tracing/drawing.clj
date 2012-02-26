@@ -23,18 +23,6 @@
 	[ position look-at up ]
 	(Camera. position look-at up))
 
-(defrecord Projection [ viewing-angle screen-distance width height background-colour ])
-
-(defn projection-create
-	[ viewing-angle screen-distance width height background-colour ]
-	(Projection. viewing-angle screen-distance width height background-colour))
-
-(defrecord Pixel [ coords colour ])
-
-(defn pixel-create
-	[ coords colour ]
-	(Pixel. coords colour))
-
 (defrecord ScreenRectangle [ top-left top-right bottom-left bottom-right ] )
 
 (defn screen-rect-create
@@ -44,18 +32,18 @@
 (defn screen-rect
 	"Returns the coordinates of screen's rectangle's vertices. 
 	 These are in 3D, relative to the position of the camera."
-	[ camera projection ]
-	(let [	angle-hori-half			(/ (:viewing-angle projection) 2)
+	[ camera screen-distance width height viewing-angle ]
+	(let [	angle-hori-half			(/ viewing-angle 2)
 
 			vec-direction			(geometry/vec-normalize
 										(geometry/vec-subtract (:look-at camera) (:position camera)))			
 
 			vec-center				(geometry/vec-mult 
 										vec-direction
-			 							(:screen-distance projection))
+			 							screen-distance)
 			vec-edge-left			(geometry/vec-mult
 										(geometry/vec-rotate vec-direction (:up camera) (- angle-hori-half))
-										(/ (:screen-distance projection) (java.lang.Math/cos angle-hori-half)))
+										(/ screen-distance (java.lang.Math/cos angle-hori-half)))
 			
 			vec-sideways			(geometry/vec-subtract
 										vec-edge-left
@@ -68,7 +56,7 @@
 											vec-sideways
 											vec-direction
 											(- math/PIover2))
-										(/ (:height projection) (:width projection)))
+										(/ height width))
 
 			vec-top-left			(geometry/vec-add 
 										vec-edge-left 
@@ -88,10 +76,37 @@
 			vec-bottom-left
 			vec-bottom-right)))
 
-(defn draw-single-coord
-	[ root-object lights camera projection screen-rect pixel counter ]
-	(let [ 	x					(+ (first pixel) 0.5)
-			y					(+ (first (rest pixel)) 0.5)
+(defrecord Projection [ viewing-angle screen-distance width height camera screen-rect background-colour ])
+
+(defn projection-create
+	[ viewing-angle screen-distance width height camera background-colour ]
+	(Projection. 	viewing-angle 
+					screen-distance 
+					width 
+					height 
+					camera 
+					(screen-rect
+						camera
+						screen-distance
+						width
+						height 
+						viewing-angle) 
+					background-colour))
+
+(defrecord Pixel [ coords colour ])
+
+(defn pixel-create
+	[ coords colour ]
+	(Pixel. coords colour))
+
+(defn get-pixel
+	[ root-object lights projection counter coords ]
+	(let [ 	camera 				(:camera projection)
+			screen-rect 		(:screen-rect projection)
+
+			x					(+ (first coords) 0.5)
+			y					(+ (first (rest coords)) 0.5)
+
 			total  				(* (:width projection) (:height projection))
 			screen-coord		(geometry/vec-add
 									(geometry/vec-add
@@ -110,84 +125,27 @@
 									(:position camera)
 									screen-coord)
 			intersections		(.intersect root-object ray) ]
-		; (println pixel)
+		; (println coords)
 		; increase the counter and print if increased by 1 percent
 		(send-off counter #(do	(if (not= 	(quot (* 100 %) total)
 											(quot (* 100 (inc %)) total))
 									(println (str "computing: " (quot (* 100 (inc %)) total) "%")))
 								(inc %)))
 		(if (empty? intersections)
-			(pixel-create pixel (:background-colour projection))
-			(pixel-create pixel (.colour-at root-object root-object lights ray)))))
+			(pixel-create coords (:background-colour projection))
+			(pixel-create coords (.colour-at root-object root-object lights ray)))))
 
-(defn draw-simple
+(defn generate-pixels
 	"Draws the scene"
-	[ root-object lights camera projection ]
-	(let [ rect (screen-rect camera projection)
-		   counter (agent 0) ]
-		(map 
+	[ root-object lights projection ]
+	(let [ counter (agent 0) ]
+		(pmap 
 			#(draw-single-coord
 				root-object
 				lights
-				camera
 				projection
-				rect
-				%
-				counter) 
+				counter
+				% ) 
 			(pixels-seq
 				(:width projection) 
 				(:height projection)))))
-
-(defn- save-as-png-pixel
-	[ image pixel counter total ]
-	(do
-		(send-off counter #(do	(if (not= 	(quot (* 100 %) total)
-											(quot (* 100 (inc %)) total))
-									(println (str "drawing: " (quot (* 100 (inc %)) total) "%")))
-								(inc %)))
-		(.setRGB image		(first (:coords pixel))
-							(first (rest (:coords pixel)))
-							(.getRGB (material/colour-to-java  (:colour pixel))))))
-(defn save-as-png
-	"Saves pixels as a PNG"
-	[ filename projection pixels ]
-	(let [ 	total  	(* (:width projection) (:height projection))
-			counter (agent 0)
-			image 	(new java.awt.image.BufferedImage
-						(:width projection)
-						(:height projection)
-						java.awt.image.BufferedImage/TYPE_INT_RGB)
-			file 	(new java.io.File filename)					]
-		(dorun (map #(save-as-png-pixel image % counter total) pixels))
-		(javax.imageio.ImageIO/write image "png" file)
-		nil ))
-
-(defn- show-realtime-pixel
-	[ image pixel counter total window ]
-	(do
-		(send-off counter #(do	(if (not= 	(quot (* 100 %) total)
-											(quot (* 100 (inc %)) total))
-									(do
-										(println (str "drawing: " (quot (* 100 (inc %)) total) "%"))
-										(.repaintImage window)))
-								(inc %)))
-		(.setRGB image 		(first (:coords pixel))
-							(first (rest (:coords pixel)))
-							(.getRGB (material/colour-to-java (:colour pixel))))))
-
-(defn show-realtime
-	[ projection pixels ]
-	(let [ 	total  	(* (:width projection) (:height projection))
-			counter (agent 0)
-			image 	(new java.awt.image.BufferedImage
-						(:width projection)
-						(:height projection)
-						java.awt.image.BufferedImage/TYPE_INT_RGB)
-			window 	(new ray_tracing.DrawWindow image) ]
-		(.setVisible window true)
-		(let [ graphics   (.getGraphics image) ]
-			(.setColor graphics java.awt.Color/WHITE)
-			(.fillRect graphics 0 0 (:width projection) (:height projection))
-			(.dispose graphics))
-		(dorun (map #(show-realtime-pixel image % counter total window) pixels))
-		nil ))

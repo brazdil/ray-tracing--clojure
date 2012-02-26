@@ -4,18 +4,18 @@
 	(:require [ray-tracing.geometry :as geometry])
 	(:require [ray-tracing.material :as material])
 	(:require [ray-tracing.lighting :as lighting])
+	(:require [ray-tracing.output :as output])
 	(:require [ray-tracing.object :as object]))
-
-(def camera 	(drawing/camera-create
-					(geometry/vec-create 1.0 1.9 -3.7)
-					(geometry/vec-create -5 1.8 5)
-					(geometry/vec-create 0 1 0)))
 
 (def projection	(drawing/projection-create
 					(java.lang.Math/toRadians 60)
 					2
 					320
 					240
+					(drawing/camera-create
+						(geometry/vec-create 1.0 1.9 -3.7)
+						(geometry/vec-create -5 1.8 5)
+						(geometry/vec-create 0 1 0))					
 					material/colour-pastel-light-blue))
 
 (def sphere 	(object/sphere-create
@@ -72,13 +72,13 @@
 (def lights [ light1 ])
 
 (defn test-draw []
-	(drawing/draw-simple scene lights camera projection))
+	(drawing/generate-pixels scene lights projection))
 
 (defn test-save []
-	(drawing/save-as-png 	"test.png"
-							projection
-							(test-draw)))
+	(output/png		"test.png"
+					projection
+					(test-draw)))
 
 (defn test-realtime []
-	(drawing/show-realtime 	projection
-							(test-draw)))
+	(output/realtime 	projection
+						(test-draw)))
