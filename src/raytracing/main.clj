@@ -13,8 +13,8 @@
 (def projection	(drawing/projection-create
 					(java.lang.Math/toRadians 60)
 					2
-					1
-					2
+					640
+					480
 					(drawing/camera-create
 						(geometry/vec-create 1.0 1.9 -3.7)
 						(geometry/vec-create -5 1.8 5)

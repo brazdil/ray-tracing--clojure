@@ -38,14 +38,14 @@
 	(let
 		; get a computer 
 		[ computer 	(lamina/wait-for-message computer-queue) ]
-		(send-off 	io-agent
-					#(do (println 
-							(str "Computing (" (get coords 0) ", " (get coords 1)
-						  		 ") using " (:name computer)))
-						 %))
+		; (send-off 	io-agent
+		; 			#(do (println 
+		; 					(str "Computing (" (get coords 0) ", " (get coords 1)
+		; 				  		 ") using " (:name computer)))
+		; 				 %))
 		; compute the value
 		(let [ value 	(try 	(.. (java.rmi.registry.LocateRegistry/getRegistry (:ip computer) (:port computer))
-									(lookup server-name) (getPixel root-object lights projection coords))
+									(lookup server-name) (getPixelClassic root-object lights projection coords))
 								(catch Exception e nil))	]
 			; put the computer back into the queue
 			(lamina/enqueue computer-queue computer)
@@ -88,12 +88,12 @@
   (proxy [raytracing.RayTracingRMI] [] 
     (ping [] :alive)
     (getPixelClassic [root_object lights projection coords] 
-    	(do (print "Computing " coords "... ")
+    	(do ; (print "Computing " coords "... ")
     		(let [ result   	(drawing/get-pixel-classic root_object 
 						    				                       lights 
 						    				                       projection 
 						    				                       coords) ]
-    			(println "OK")
+    			; (println "OK")
     			result)))
     ))
 
