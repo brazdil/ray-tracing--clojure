@@ -143,7 +143,11 @@
 
 (defn get-pixel-antialiased
 	[ map-fn sampling root-object lights projection coords ]
-	(do 
+	(let [ subpixels-corners 		[ [0, 0] 
+		                              [0, (- sampling 1)] 
+		                              [(- sampling 1), 0] 
+		                              [(- sampling 1) (- sampling 1)] ] ]
+
 		(pixel-create
 			coords
 			(material/colour-average

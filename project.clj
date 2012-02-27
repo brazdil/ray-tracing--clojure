@@ -4,5 +4,7 @@
   				 [org.clojure/clojure-contrib "1.2.0"]
                  [lamina "0.4.0"]]
   :aot [#".*"] 
-  :java-source-path "java/src/"
-  :repl-init ray-tracing.main)
+  :java-source-path "java/"
+  :repl-init ray-tracing.main
+
+  :profiles { :dev {:warn-on-reflection true} })

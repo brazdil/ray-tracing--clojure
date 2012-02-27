@@ -72,20 +72,20 @@
 
 (def lights [ light1 ])
 
-(def computer-localhost (network/computer-create "localhost" "127.0.0.1" 9999))
-(def computer-pwf (network/computer-create "linux.pwf.cl.cam.ac.uk" "193.60.95.68" 9999))
-(def computer-strelec (network/computer-create "strelec" "89.102.181.190" 9999))
-(def computers [ computer-localhost computer-pwf computer-strelec ])
+(def computer-localhost (network/computer-create "localhost" "127.0.0.1" 1099))
+(def computer-pwf (network/computer-create "linux.pwf.cl.cam.ac.uk" "193.60.95.68" 1099))
+; (def computer-strelec (network/computer-create "strelec" "89.102.181.190" 9999))
+(def computers [ computer-localhost computer-pwf ])
 
-(defn draw-network []
-	(do 
-		(network/check-computers computers)
-		(network/generate-pixels 
-			scene 
-			lights 
-			projection 
-			(drawing/get-fn-antialiased-parallel 4)
-			computers)))
+; (defn draw-network []
+; 	(do 
+; 		(network/check-computers computers)
+; 		(network/generate-pixels 
+; 			scene 
+; 			lights 
+; 			projection 
+; 			(drawing/get-fn-antialiased-parallel 4)
+; 			computers)))
 
 (defn draw-local []
 	(drawing/generate-pixels 
