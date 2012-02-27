@@ -13,6 +13,7 @@
     (ping [] :alive)))
 
 (def server-registry (atom nil))
+(def server-object (server-generator))
 
 (defn server-start [ port ]
 	(do
@@ -20,7 +21,7 @@
   		(.bind
  			(java.rmi.registry.LocateRegistry/getRegistry)
 			server-name
-   			(java.rmi.server.UnicastRemoteObject/exportObject (server-generator) 0))))
+   			(java.rmi.server.UnicastRemoteObject/exportObject server-object 0))))
 
 ; CLIENT PART
 
@@ -42,7 +43,7 @@
 																(java.rmi.registry.LocateRegistry/getRegistry 
 																	(:ip %) (:port %)) 
 																server-name))
-								   						(catch Exception e nil)) 		]
+								   						(catch Exception e (println (.getMessage e)))) ]
 								(if (= :alive state)
 									(println "OK")
 									(println "not responding"))
