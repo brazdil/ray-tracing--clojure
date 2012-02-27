@@ -1,6 +1,6 @@
-(ns ray-tracing.object-common
-	(:require [ray-tracing.geometry :as geometry])
-	(:require [ray-tracing.material :as material]))
+(ns raytracing.object-common
+	(:require [raytracing.geometry :as geometry])
+	(:require [raytracing.material :as material]))
 
 (defprotocol PObject
 	"Interface that each object in the scene has to implement"

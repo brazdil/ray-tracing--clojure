@@ -1,4 +1,4 @@
-package ray_tracing;
+package raytracing;
 
 import java.awt.* ;
 import java.awt.event.* ;

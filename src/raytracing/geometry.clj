@@ -1,4 +1,4 @@
-(ns ray-tracing.geometry)
+(ns raytracing.geometry)
 
 ; (set! *warn-on-reflection* true)
 

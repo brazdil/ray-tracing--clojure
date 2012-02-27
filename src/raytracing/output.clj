@@ -1,8 +1,8 @@
-(ns ray-tracing.output
-	(:require [ray-tracing.material :as material])
-	(:require [ray-tracing.drawing :as drawing])
-	(:require [ray-tracing.object :as object])
-	(:require [ray-tracing.object-common :as object-common]))
+(ns raytracing.output
+	(:require [raytracing.material :as material])
+	(:require [raytracing.drawing :as drawing])
+	(:require [raytracing.object :as object])
+	(:require [raytracing.object-common :as object-common]))
 
 (defn- png-pixel
 	[ image pixel total ]
@@ -41,7 +41,7 @@
 						(:width projection)
 						(:height projection)
 						java.awt.image.BufferedImage/TYPE_INT_RGB)
-			window 	(new ray_tracing.DrawWindow image) ]
+			window 	(new raytracing.DrawWindow image) ]
 		(.setVisible window true)
 		(let [ graphics   (.getGraphics image) ]
 			(.setColor graphics java.awt.Color/WHITE)

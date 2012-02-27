@@ -1,12 +1,12 @@
-(ns ray-tracing.main
-	(:require [ray-tracing.drawing :as drawing])
-	(:require [ray-tracing.math :as math])
-	(:require [ray-tracing.geometry :as geometry])
-	(:require [ray-tracing.material :as material])
-	(:require [ray-tracing.lighting :as lighting])
-	(:require [ray-tracing.output :as output])
-	(:require [ray-tracing.network :as network])
-	(:require [ray-tracing.object :as object]))
+(ns raytracing.main
+	(:require [raytracing.drawing :as drawing])
+	(:require [raytracing.math :as math])
+	(:require [raytracing.geometry :as geometry])
+	(:require [raytracing.material :as material])
+	(:require [raytracing.lighting :as lighting])
+	(:require [raytracing.output :as output])
+	(:require [raytracing.network :as network])
+	(:require [raytracing.object :as object]))
 
 (def projection	(drawing/projection-create
 					(java.lang.Math/toRadians 60)
@@ -77,15 +77,15 @@
 ; (def computer-strelec (network/computer-create "strelec" "89.102.181.190" 9999))
 (def computers [ computer-localhost computer-pwf ])
 
-; (defn draw-network []
-; 	(do 
-; 		(network/check-computers computers)
-; 		(network/generate-pixels 
-; 			scene 
-; 			lights 
-; 			projection 
-; 			(drawing/get-fn-antialiased-parallel 4)
-; 			computers)))
+(defn draw-network []
+	(do 
+		(network/check-computers computers)
+		(network/generate-pixels 
+			scene 
+			lights 
+			projection 
+			(drawing/get-fn-antialiased-parallel 4)
+			computers)))
 
 (defn draw-local []
 	(drawing/generate-pixels 

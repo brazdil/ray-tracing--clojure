@@ -1,9 +1,9 @@
-(ns ray-tracing.object
-	(:require [ray-tracing.math :as math])
-	(:require [ray-tracing.geometry :as geometry])
-	(:require [ray-tracing.object-common :as object-common])
-	(:require [ray-tracing.material :as material])
-	(:require [ray-tracing.lighting :as lighting]))
+(ns raytracing.object
+	(:require [raytracing.math :as math])
+	(:require [raytracing.geometry :as geometry])
+	(:require [raytracing.object-common :as object-common])
+	(:require [raytracing.material :as material])
+	(:require [raytracing.lighting :as lighting]))
 
 (defmacro dbg [x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
 

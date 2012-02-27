@@ -5,6 +5,6 @@
                  [lamina "0.4.0"]]
   :aot [#".*"] 
   :java-source-path "java/"
-  :repl-init ray-tracing.main
+  :repl-init raytracing.main
 
   :profiles { :dev {:warn-on-reflection true} })
