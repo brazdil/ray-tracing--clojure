@@ -8,11 +8,13 @@
 	(:require [raytracing.network :as network])
 	(:require [raytracing.object :as object]))
 
+(defmacro dbg [x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
+
 (def projection	(drawing/projection-create
 					(java.lang.Math/toRadians 60)
 					2
-					1920
-					1440
+					1
+					2
 					(drawing/camera-create
 						(geometry/vec-create 1.0 1.9 -3.7)
 						(geometry/vec-create -5 1.8 5)
@@ -84,7 +86,6 @@
 			scene 
 			lights 
 			projection 
-			(drawing/get-fn-antialiased-parallel 4)
 			computers)))
 
 (defn draw-local []

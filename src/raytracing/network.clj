@@ -33,8 +33,8 @@
 						computers))
 		nil))
 
-(defn- get-pixel
-	[ root-object lights projection func computer-queue io-agent coords ]
+(defn- get-pixel-classic
+	[ root-object lights projection computer-queue io-agent coords ]
 	(let
 		; get a computer 
 		[ computer 	(lamina/wait-for-message computer-queue) ]
@@ -59,44 +59,40 @@
 									  		 ") using " (:name computer)))
 									 %))
 					; try it again
-					(recur root-object lights projection func computer-queue io-agent coords))
+					(recur root-object lights projection computer-queue io-agent coords))
 				; computed ! return the value
-				(drawing/pixel-create coords value)))))
+				value))))
 
 (defn generate-pixels
  	"Draws the scene distributively"
- 	[ root-object lights projection func computers ]
+ 	[ root-object lights projection computers ]
  	(let [ 	computer-queue 	(lamina/channel) 
  			io-agent		(agent 0)			]
- 		(do
- 			; put all the computers in the queue
- 			(dorun (map #(lamina/enqueue computer-queue %) computers))
- 			; create the sequence that will compute everything distributively
-		(pmap 	#(get-pixel
+		; put all the computers in the queue
+		(dorun (map #(lamina/enqueue computer-queue %) computers))
+		; create the sequence that will compute everything distributively
+		(map 	#(get-pixel-classic
 					root-object
 					lights
 					projection
-					func
 					computer-queue
 					io-agent
 					(vec %))
 				(drawing/pixels-seq
 					(:width projection) 
-					(:height projection))))))
+					(:height projection)))))
 
 ; SERVER PART
 
 (defn- server-generator []
   (proxy [raytracing.RayTracingRMI] [] 
     (ping [] :alive)
-    (getPixel [root_object lights projection coords] 
+    (getPixelClassic [root_object lights projection coords] 
     	(do (print "Computing " coords "... ")
-    		(let [ result   	(material/colour-to-java 
-						    		(:colour 
-										(drawing/get-pixel-classic root_object 
+    		(let [ result   	(drawing/get-pixel-classic root_object 
 						    				                       lights 
 						    				                       projection 
-						    				                       coords))) ]
+						    				                       coords) ]
     			(println "OK")
     			result)))
     ))

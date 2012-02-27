@@ -4,21 +4,22 @@
 	(:require [raytracing.object :as object])
 	(:require [raytracing.object-common :as object-common]))
 
+(defmacro dbg [x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
+
 (defn- png-pixel
-	[ image pixel total ]
+	[ image pixel ]
 	(.setRGB image		(first (:coords pixel))
 						(first (rest (:coords pixel)))
-						(.getRGB (material/colour-to-java  (:colour pixel)))))
+						(.getRGB (material/colour-to-java (:colour pixel)))))
 (defn png
 	"Saves pixels as a PNG"
 	[ filename projection pixels ]
-	(let [ 	total  	(* (:width projection) (:height projection))
-			image 	(new java.awt.image.BufferedImage
+	(let [ 	image 	(new java.awt.image.BufferedImage
 						(:width projection)
 						(:height projection)
 						java.awt.image.BufferedImage/TYPE_INT_RGB)
 			file 	(new java.io.File filename)					]
-		(dorun (map #(png-pixel image % total) pixels))
+		(dorun (map #(png-pixel image %) pixels))
 		(javax.imageio.ImageIO/write image "png" file)
 		nil ))
 
