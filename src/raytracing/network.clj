@@ -90,13 +90,15 @@
   (proxy [raytracing.RayTracingRMI] [] 
     (ping [] :alive)
     (getPixel [root_object lights projection coords] 
-    	(do (println "Computing " coords)
-	    	(material/colour-to-java 
-	    		(:colour 
-					(drawing/get-pixel-classic root_object 
-	    				                       lights 
-	    				                       projection 
-	    				                       coords)))))
+    	(do (print "Computing " coords "... ")
+    		(let [ result   	(material/colour-to-java 
+						    		(:colour 
+										(drawing/get-pixel-classic root_object 
+						    				                       lights 
+						    				                       projection 
+						    				                       coords))) ]
+    			(println "OK")
+    			result)))
     ))
 
 (def server-registry (atom nil))
