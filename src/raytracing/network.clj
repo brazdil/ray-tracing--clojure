@@ -28,7 +28,7 @@
 								   						(catch Exception e nil)) ]
 								(if (= :alive state)
 									(println "OK")
-									(println "not responding"))
+									(println "FAILED"))
 								{:computer % :state state}))
 						computers))
 		nil))
@@ -90,12 +90,13 @@
   (proxy [raytracing.RayTracingRMI] [] 
     (ping [] :alive)
     (getPixel [root_object lights projection coords] 
-    	(material/colour-to-java 
-    		(:colour 
-				(drawing/get-pixel-classic root_object 
-    				                       lights 
-    				                       projection 
-    				                       coords))))
+    	(do (println "Computing " coords)
+	    	(material/colour-to-java 
+	    		(:colour 
+					(drawing/get-pixel-classic root_object 
+	    				                       lights 
+	    				                       projection 
+	    				                       coords)))))
     ))
 
 (def server-registry (atom nil))
