@@ -45,8 +45,8 @@
 		; 				 %))
 		; compute the value
 		(let [ value 	(try 	(.. (java.rmi.registry.LocateRegistry/getRegistry (:ip computer) (:port computer))
-									(lookup server-name) (getPixelClassic root-object lights projection coords))
-								(catch Exception e nil))	]
+									(lookup server-name) (getPixelClassic coords))
+								(catch Exception e (println e)))	]
 			; put the computer back into the queue
 			(lamina/enqueue computer-queue computer)
 			; decide what to do next
@@ -63,15 +63,25 @@
 				; computed ! return the value
 				value))))
 
+(defn- init-computer
+	[ root-object lights projection computer-queue computer ]
+	(let [ value 	(try 	(.. (java.rmi.registry.LocateRegistry/getRegistry (:ip computer) (:port computer))
+								(lookup server-name) (init root-object lights projection))
+							(catch Exception e (println e)))	]
+		(if (= (dbg value) :initialized)
+			(lamina/enqueue computer-queue computer)
+			(println (str (:name computer) " wasn't initialized") ))))
+
+
 (defn generate-pixels
  	"Draws the scene distributively"
  	[ root-object lights projection computers ]
  	(let [ 	computer-queue 	(lamina/channel) 
  			io-agent		(agent 0)			]
 		; put all the computers in the queue
-		(dorun (map #(lamina/enqueue computer-queue %) computers))
+		(dorun (map #(init-computer root-object lights projection computer-queue %) computers))
 		; create the sequence that will compute everything distributively
-		(map 	#(get-pixel-classic
+		(pmap 	#(get-pixel-classic
 					root-object
 					lights
 					projection
@@ -84,20 +94,30 @@
 
 ; SERVER PART
 
+(def server-registry (atom nil))
+(def server-data (atom nil))
+
 (defn- server-generator []
   (proxy [raytracing.RayTracingRMI] [] 
     (ping [] :alive)
-    (getPixelClassic [root_object lights projection coords] 
+    (init [ root_object lights projection ]
+    	(do 
+	    	(swap! server-data
+	    		   (fn [ a ] {:root-object root_object
+	    		    :lights lights
+	    		    :projection projection }))
+	    	(println "Initializing...")
+    		:initialized))
+    (getPixelClassic [ coords ] 
     	(do ; (print "Computing " coords "... ")
-    		(let [ result   	(drawing/get-pixel-classic root_object 
-						    				                       lights 
-						    				                       projection 
-						    				                       coords) ]
+    		(let [ result   	(drawing/get-pixel-classic (:root-object @server-data)
+						    				               (:lights @server-data)
+						    				               (:projection @server-data)
+						    				               coords) ]
     			; (println "OK")
     			result)))
     ))
 
-(def server-registry (atom nil))
 (def server-object (server-generator))
 
 (defn server-start [ port ]
