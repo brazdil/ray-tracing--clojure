@@ -69,8 +69,7 @@
 			(Composite.
 				(map #(.flip-normal %) sub-objects)))
 		(intersect [ this ray ]
-			(reduce 	#(reduce conj %1 %2)
-						(map	#(.intersect % ray)
+			(reduce concat (map	#(.intersect % ray)
 								sub-objects)))
 		(colour-at [ this root-object lights ray ]
 			(.colour-at
