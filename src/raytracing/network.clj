@@ -68,7 +68,7 @@
 	(let [ value 	(try 	(.. (java.rmi.registry.LocateRegistry/getRegistry (:ip computer) (:port computer))
 								(lookup server-name) (init root-object lights projection))
 							(catch Exception e (println e)))	]
-		(if (= (dbg value) :initialized)
+		(if (= value :initialized)
 			(lamina/enqueue computer-queue computer)
 			(println (str (:name computer) " wasn't initialized") ))))
 
@@ -106,7 +106,6 @@
 	    		   (fn [ a ] {:root-object root_object
 	    		    :lights lights
 	    		    :projection projection }))
-	    	(println "Initializing...")
     		:initialized))
     (getPixelClassic [ coords ] 
     	(do ; (print "Computing " coords "... ")

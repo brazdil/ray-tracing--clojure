@@ -141,18 +141,34 @@
 	[ (+ (/ (+ (first subpixel) (rand)) sampling) -0.5 (first coords))
 	  (+ (/ (+ (first (rest subpixel)) (rand)) sampling) -0.5 (first (rest coords))) ])
 
+(defn- is-coord-in 
+	[ x coords ]
+	(let [ eq 	(fn [a b] (and (= (first a) (first b)) (= (first (rest a)) (first (rest b))))) ]
+		(reduce #(or %1 (eq x %2))
+				false
+				coords)))
+
 (defn get-pixel-antialiased
 	[ map-fn sampling root-object lights projection coords ]
-	(let [ subpixels-corners 		[ [0, 0] 
-		                              [0, (- sampling 1)] 
-		                              [(- sampling 1), 0] 
-		                              [(- sampling 1) (- sampling 1)] ] ]
-
-		(pixel-create
-			coords
-			(material/colour-average
-				(map-fn	#(:colour (get-pixel-classic root-object lights projection %))
-						(map #(subpixel-randomization sampling coords %) (subpixels-seq sampling)))))))
+	(let [ samplingM1				(- sampling 1)
+		   corner-subpixels			[ [0, 0] 
+			                          [0, samplingM1] 
+			                          [samplingM1, 0] 
+			                          [samplingM1 samplingM1] ]
+		   colours-corners 			(map-fn #(:colour (get-pixel-classic root-object lights projection %))
+		   									(map #(subpixel-randomization sampling coords %) corner-subpixels ))
+		   colours-corners-average	(material/colour-average colours-corners)	]
+		(if (material/colours-same colours-corners colours-corners-average)
+			(pixel-create coords colours-corners-average)
+			(pixel-create
+				coords
+				(material/colour-average
+					(concat 
+						colours-corners
+						(map-fn	#(:colour (get-pixel-classic root-object lights projection %))
+								(map 	#(subpixel-randomization sampling coords %) 
+										(filter #(not (is-coord-in % corner-subpixels))
+												(subpixels-seq sampling))))))))))
 
 (defn get-fn-classic
 	[ ]

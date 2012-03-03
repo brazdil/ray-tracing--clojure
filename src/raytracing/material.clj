@@ -73,3 +73,22 @@
 (defn material-mix
 	[ material light-diffuse ]
 	(colour-mult (:colour-diffuse material) light-diffuse))
+
+(def sufficient-difference 0.01)
+(def m-sufficient-difference (- sufficient-difference))
+
+(defn- one-colour-same
+	[ colour average ]
+	(let [ diffR 	(- (:r colour) (:r average))
+		   diffG 	(- (:g colour) (:g average))
+		   diffB 	(- (:b colour) (:b average))	]
+		(and 	(< diffR sufficient-difference) (> diffR m-sufficient-difference)
+				(< diffG sufficient-difference) (> diffG m-sufficient-difference)
+				(< diffB sufficient-difference) (> diffB m-sufficient-difference))))
+
+(defn colours-same
+	"Returns false if any channel of the given sequence of colours differs from average by more than 1%"
+	[ colours average ]
+	(reduce 	#(and %1 (one-colour-same %2 average)) 
+				true
+				colours))
