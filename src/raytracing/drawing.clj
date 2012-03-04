@@ -185,7 +185,7 @@
 (defn generate-pixels
 	"Draws the scene"
 	[ root-object lights projection func ]
-	(pmap 
+	(map 
 		#(func
 			root-object
 			lights

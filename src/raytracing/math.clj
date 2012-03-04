@@ -22,3 +22,5 @@
       
 (def PI java.lang.Math/PI)
 (def PIover2 (/ PI 2))
+(def INFINITY java.lang.Double/POSITIVE_INFINITY)
+(def mINFINITY java.lang.Double/NEGATIVE_INFINITY)

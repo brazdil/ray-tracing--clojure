@@ -1,6 +1,9 @@
-(ns raytracing.geometry)
+(ns raytracing.geometry
+	(:require [raytracing.math :as math]))
 
 ; (set! *warn-on-reflection* true)
+
+(defmacro dbg [x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
 
 (defrecord Vector [ ^Double x
 					^Double y
@@ -8,6 +11,19 @@
 
 (defrecord Ray [ ^Vector point 
 			     ^Vector direction ])
+
+(defrecord BoundingBox [ 	^Double xmin 
+							^Double xmax 
+							^Double ymin 
+							^Double ymax 
+							^Double zmin 
+							^Double zmax ])
+
+(defn- fn-comp	
+	[ coord cmp a b ]
+	(if (cmp a (coord b))
+		a
+		(coord b)))
 
 (defn vec-create 
 	[ x y z ]
@@ -166,3 +182,192 @@
 	 	(vec-mult
 	 		(:direction ray)
 	 		param)))
+
+(defn bounding-box-merge
+	[ bboxes ]
+	(BoundingBox.
+		(reduce (partial fn-comp :xmin <) math/INFINITY bboxes)
+		(reduce (partial fn-comp :xmax >) math/mINFINITY bboxes)
+		(reduce (partial fn-comp :ymin <) math/INFINITY bboxes)
+		(reduce (partial fn-comp :ymax >) math/mINFINITY bboxes)
+		(reduce (partial fn-comp :zmin <) math/INFINITY bboxes)
+		(reduce (partial fn-comp :zmax >) math/mINFINITY bboxes)))
+
+(defn bounding-box-create
+	( [ vertices ]
+		(BoundingBox.
+			(reduce (partial fn-comp :x <) math/INFINITY vertices)
+			(reduce (partial fn-comp :x >) math/mINFINITY vertices)
+			(reduce (partial fn-comp :y <) math/INFINITY vertices)
+			(reduce (partial fn-comp :y >) math/mINFINITY vertices)
+			(reduce (partial fn-comp :z <) math/INFINITY vertices)
+			(reduce (partial fn-comp :z >) math/mINFINITY vertices)))
+	( [ xmin xmax ymin ymax zmin zmax ]
+		(BoundingBox. xmin xmax ymin ymax zmin zmax)))
+
+(defn bounding-box-intersects
+	[ bbox ray ]
+	; implementation of http://pages.cpsc.ucalgary.ca/~blob/ps/jgt04.pdf
+	; code at http://jgt.akpeters.com/papers/MahovskyWyvill04/
+	(let [ D 	(:direction ray)
+	       O 	(:point ray)
+	     ]
+		(if (< (:x D) 0)
+			(if (< (:y D) 0)
+				(if (< (:z D) 0)
+					; case MMM
+					(if (or (< (:x O) (:xmin bbox))
+							(< (:y O) (:ymin bbox))
+							(< (:z O) (:zmin bbox)))
+						false
+						(let [	xa 	(- (:xmin bbox) (:x O))
+								ya 	(- (:ymin bbox) (:y O))
+								za 	(- (:zmin bbox) (:z O))
+								xb 	(- (:xmax bbox) (:x O))
+								yb 	(- (:ymax bbox) (:y O))
+								zb 	(- (:zmax bbox) (:z O)) ]
+							(if (or 	(< (- (* (:x D) ya) (* (:y D) xb)) 0)
+										(> (- (* (:x D) yb) (* (:y D) xa)) 0)
+										(< (- (* (:x D) za) (* (:z D) xb)) 0)
+										(> (- (* (:x D) zb) (* (:z D) xa)) 0)
+										(< (- (* (:y D) za) (* (:z D) yb)) 0)
+										(> (- (* (:y D) zb) (* (:z D) ya)) 0))
+								false
+								true)))
+					; case MMP
+					(if (or (< (:x O) (:xmin bbox))
+							(< (:y O) (:ymin bbox))
+							(> (:z O) (:zmax bbox)))
+						false
+						(let [	xa 	(- (:xmin bbox) (:x O))
+								ya 	(- (:ymin bbox) (:y O))
+								za 	(- (:zmin bbox) (:z O))
+								xb 	(- (:xmax bbox) (:x O))
+								yb 	(- (:ymax bbox) (:y O))
+								zb 	(- (:zmax bbox) (:z O)) ]
+							(if (or 	(< (- (* (:x D) ya) (* (:y D) xb)) 0)
+										(> (- (* (:x D) yb) (* (:y D) xa)) 0)
+										(< (- (* (:x D) za) (* (:z D) xa)) 0)
+										(> (- (* (:x D) zb) (* (:z D) xb)) 0)
+										(< (- (* (:y D) za) (* (:z D) ya)) 0)
+										(> (- (* (:y D) zb) (* (:z D) yb)) 0))
+								false
+								true))))
+				(if (< (:z D) 0)
+					; case MPM
+					(if (or (< (:x O) (:xmin bbox))
+							(> (:y O) (:ymax bbox))
+							(< (:z O) (:zmin bbox)))
+						false
+						(let [	xa 	(- (:xmin bbox) (:x O))
+								ya 	(- (:ymin bbox) (:y O))
+								za 	(- (:zmin bbox) (:z O))
+								xb 	(- (:xmax bbox) (:x O))
+								yb 	(- (:ymax bbox) (:y O))
+								zb 	(- (:zmax bbox) (:z O)) ]
+							(if (or 	(< (- (* (:x D) ya) (* (:y D) xa)) 0)
+										(> (- (* (:x D) yb) (* (:y D) xb)) 0)
+										(< (- (* (:x D) za) (* (:z D) xb)) 0)
+										(> (- (* (:x D) zb) (* (:z D) xa)) 0)
+										(< (- (* (:y D) zb) (* (:z D) yb)) 0)
+										(> (- (* (:y D) za) (* (:z D) ya)) 0))
+								false
+								true)))
+					; case MPP
+					(if (or (< (:x O) (:xmin bbox))
+							(> (:y O) (:ymax bbox))
+							(> (:z O) (:zmax bbox)))
+						false
+						(let [	xa 	(- (:xmin bbox) (:x O))
+								ya 	(- (:ymin bbox) (:y O))
+								za 	(- (:zmin bbox) (:z O))
+								xb 	(- (:xmax bbox) (:x O))
+								yb 	(- (:ymax bbox) (:y O))
+								zb 	(- (:zmax bbox) (:z O)) ]
+							(if (or 	(< (- (* (:x D) ya) (* (:y D) xa)) 0)
+										(> (- (* (:x D) yb) (* (:y D) xb)) 0)
+										(< (- (* (:x D) za) (* (:z D) xa)) 0)
+										(> (- (* (:x D) zb) (* (:z D) xb)) 0)
+										(< (- (* (:y D) zb) (* (:z D) ya)) 0)
+										(> (- (* (:y D) za) (* (:z D) yb)) 0))
+								false
+								true)))))
+			(if (< (:y D) 0)
+				(if (< (:z D) 0)
+					; case PMM
+					(if (or (> (:x O) (:xmax bbox))
+							(< (:y O) (:ymin bbox))
+							(< (:z O) (:zmin bbox)))
+						false
+						(let [	xa 	(- (:xmin bbox) (:x O))
+								ya 	(- (:ymin bbox) (:y O))
+								za 	(- (:zmin bbox) (:z O))
+								xb 	(- (:xmax bbox) (:x O))
+								yb 	(- (:ymax bbox) (:y O))
+								zb 	(- (:zmax bbox) (:z O)) ]
+							(if (or 	(< (- (* (:x D) yb) (* (:y D) xb)) 0)
+										(> (- (* (:x D) ya) (* (:y D) xa)) 0)
+										(< (- (* (:x D) zb) (* (:z D) xb)) 0)
+										(> (- (* (:x D) za) (* (:z D) xa)) 0)
+										(< (- (* (:y D) za) (* (:z D) yb)) 0)
+										(> (- (* (:y D) zb) (* (:z D) ya)) 0))
+								false
+								true)))
+					; case PMP
+					(if (or (> (:x O) (:xmax bbox))
+							(< (:y O) (:ymin bbox))
+							(> (:z O) (:zmax bbox)))
+						false
+						(let [	xa 	(- (:xmin bbox) (:x O))
+								ya 	(- (:ymin bbox) (:y O))
+								za 	(- (:zmin bbox) (:z O))
+								xb 	(- (:xmax bbox) (:x O))
+								yb 	(- (:ymax bbox) (:y O))
+								zb 	(- (:zmax bbox) (:z O)) ]
+							(if (or 	(< (- (* (:x D) yb) (* (:y D) xb)) 0)
+										(> (- (* (:x D) ya) (* (:y D) xa)) 0)
+										(< (- (* (:x D) zb) (* (:z D) xa)) 0)
+										(> (- (* (:x D) za) (* (:z D) xb)) 0)
+										(< (- (* (:y D) za) (* (:z D) ya)) 0)
+										(> (- (* (:y D) zb) (* (:z D) yb)) 0))
+								false
+								true))))
+				(if (< (:z D) 0)
+					; case PPM
+					(if (or (> (:x O) (:xmax bbox))
+							(> (:y O) (:ymax bbox))
+							(< (:z O) (:zmin bbox)))
+						false
+						(let [	xa 	(- (:xmin bbox) (:x O))
+								ya 	(- (:ymin bbox) (:y O))
+								za 	(- (:zmin bbox) (:z O))
+								xb 	(- (:xmax bbox) (:x O))
+								yb 	(- (:ymax bbox) (:y O))
+								zb 	(- (:zmax bbox) (:z O)) ]
+							(if (or 	(< (- (* (:x D) yb) (* (:y D) xa)) 0)
+										(> (- (* (:x D) ya) (* (:y D) xb)) 0)
+										(< (- (* (:x D) zb) (* (:z D) xb)) 0)
+										(> (- (* (:x D) za) (* (:z D) xa)) 0)
+										(< (- (* (:y D) zb) (* (:z D) yb)) 0)
+										(> (- (* (:y D) za) (* (:z D) ya)) 0))
+								false
+								true)))
+					; case PPP
+					(if (or (> (:x O) (:xmax bbox))
+							(> (:y O) (:ymax bbox))
+							(> (:z O) (:zmax bbox)))
+						false
+						(let [	xa 	(- (:xmin bbox) (:x O))
+								ya 	(- (:ymin bbox) (:y O))
+								za 	(- (:zmin bbox) (:z O))
+								xb 	(- (:xmax bbox) (:x O))
+								yb 	(- (:ymax bbox) (:y O))
+								zb 	(- (:zmax bbox) (:z O)) ]
+							(if (or 	(< (- (* (:x D) yb) (* (:y D) xa)) 0)
+										(> (- (* (:x D) ya) (* (:y D) xb)) 0)
+										(< (- (* (:x D) za) (* (:z D) xb)) 0)
+										(> (- (* (:x D) zb) (* (:z D) xa)) 0)
+										(< (- (* (:y D) zb) (* (:z D) ya)) 0)
+										(> (- (* (:y D) za) (* (:z D) yb)) 0))
+								false
+								true))))))))

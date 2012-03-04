@@ -45,32 +45,42 @@
 			(:first-intersect first-struct))))
 
 (defrecord Composite
-	[ sub-objects ]
+	[ sub-objects bbox ]
 	object-common/PObject
 		(debug [ this ]
 			(dorun (map #(.debug %) sub-objects))
 			this)
 		(translate [ this v ]
-			(Composite.
-				(map #(.translate % v) sub-objects)))
+			(let [ new-sub-objects	(map #(.translate % v) sub-objects)]
+				(Composite.
+					new-sub-objects
+					(geometry/bounding-box-merge (map #(.bounding-box %) new-sub-objects)))))
 		(rotateX [ this angle ]
-			(Composite.
-				(map #(.rotateX % angle) sub-objects)))
+			(let [ new-sub-objects	(map #(.rotateX % angle) sub-objects)]
+				(Composite.
+					new-sub-objects
+					(geometry/bounding-box-merge (map #(.bounding-box %) new-sub-objects)))))
 		(rotateY [ this angle ]
-			(Composite.
-				(map #(.rotateY % angle) sub-objects)))
+			(let [ new-sub-objects	(map #(.rotateY % angle) sub-objects)]
+				(Composite.
+					new-sub-objects
+					(geometry/bounding-box-merge (map #(.bounding-box %) new-sub-objects)))))
 		(rotateZ [ this angle ]
-			(Composite.
-				(map #(.rotateZ % angle) sub-objects)))
-		(scale [ this amount ]
-			(Composite.
-				(map #(.scale % amount) sub-objects)))
+			(let [ new-sub-objects	(map #(.rotateZ % angle) sub-objects)]
+				(Composite.
+					new-sub-objects
+					(geometry/bounding-box-merge (map #(.bounding-box %) new-sub-objects)))))
 		(flip-normal [ this ]
-			(Composite.
-				(map #(.flip-normal %) sub-objects)))
+			(let [ new-sub-objects	(map #(.flip-normal %) sub-objects)]
+				(Composite.
+					new-sub-objects
+					bbox)))
+		(bounding-box [ this ]
+			bbox)
 		(intersect [ this ray ]
-			(reduce concat (map	#(.intersect % ray)
-								sub-objects)))
+			(if (geometry/bounding-box-intersects bbox ray)
+				(reduce concat (map	#(.intersect % ray) sub-objects))
+				[] ))
 		(colour-at [ this root-object lights ray ]
 			(.colour-at
 				(first-intersecting-object 
@@ -78,16 +88,16 @@
 				root-object 
 				lights 
 				ray)))
-		
+
 (defn composite-create
 	[ objects ]
-	(Composite. objects))
+	(Composite. objects
+				(geometry/bounding-box-merge (map #(.bounding-box %) objects))))
 
 (defn composite-merge
 	[ comp1 comp2 ]	
 	(composite-create
-		(reduce 	conj
-					(:sub-objects comp1)
+		(concat		(:sub-objects comp1)
 					(:sub-objects comp2))))
 
 (defrecord Sphere
@@ -106,10 +116,16 @@
 			this)
 		(rotateZ [ this angle ]
 			this)
-		(scale [ this amount ]
-			(Sphere. center (* radius amount) inside-out material))
 		(flip-normal [ this ]
 			(Sphere. center radius (not inside-out) material))
+		(bounding-box [ this ]
+			(geometry/bounding-box-create
+				(- (:x center) radius)
+				(+ (:x center) radius)
+				(- (:y center) radius)
+				(+ (:y center) radius)
+				(- (:z center) radius)
+				(+ (:z center) radius)))
 		(intersect [ this ray ]
 			(let [ O_C  (geometry/vec-subtract (:point ray) center)
 				   a    (geometry/vec-dot-product 
@@ -152,8 +168,16 @@
 	(	[ material ]
 		(sphere-create 1 material)))
 
+(defn- rectangle-bounding-box
+	[ origin v1 v2 ]
+	(geometry/bounding-box-create
+		[ 	origin
+			(geometry/vec-add origin v1)
+			(geometry/vec-add origin v2)
+			(reduce geometry/vec-add origin [ v1 v2 ]) ]))
+
 (defrecord Rectangle
-	[ origin v1 v2 N material d len-v1-sq len-v2-sq ]
+	[ origin v1 v2 N material d len-v1-sq len-v2-sq bbox ]
 	object-common/PObject
 		(debug [ this ]
 			(do	
@@ -162,6 +186,7 @@
 				(dbg v2)
 				(dbg N)
 				(dbg d)
+				(dbg bbox)
 				this))
 		(translate [ this v ]
 			(let [ newOrigin 	(geometry/vec-add origin v) ]
@@ -173,57 +198,65 @@
 					material 
 					(geometry/vec-dot-product N newOrigin)
 					len-v1-sq 
-					len-v2-sq)))
+					len-v2-sq
+					(rectangle-bounding-box newOrigin v1 v2))))
 		(rotateX [ this angle ]
 			(let [ 	newOrigin	(geometry/vec-rotate-x origin angle)
 					newN 		(geometry/vec-subtract
 									(geometry/vec-rotate-x
 										(geometry/vec-add N origin)
 										angle)
-								origin)				]
-			(Rectangle.
-				newOrigin
-				(geometry/vec-rotate-x v1 angle)
-				(geometry/vec-rotate-x v2 angle)
-				newN
-				material
-				(geometry/vec-dot-product newN newOrigin)
-				len-v1-sq
-				len-v2-sq)))
+								origin)				
+					newV1		(geometry/vec-rotate-x v1 angle)
+					newV2		(geometry/vec-rotate-x v2 angle) ]
+				(Rectangle.
+					newOrigin
+					newV1
+					newV2
+					newN
+					material
+					(geometry/vec-dot-product newN newOrigin)
+					len-v1-sq
+					len-v2-sq
+					(rectangle-bounding-box newOrigin newV1 newV2))))
 		(rotateY [ this angle ]
 			(let [ 	newOrigin	(geometry/vec-rotate-y origin angle)
 					newN 		(geometry/vec-subtract
 									(geometry/vec-rotate-y
 										(geometry/vec-add N origin)
 										angle)
-								origin)				]
-			(Rectangle.
-				newOrigin
-				(geometry/vec-rotate-y v1 angle)
-				(geometry/vec-rotate-y v2 angle)
-				newN
-				material
-				(geometry/vec-dot-product newN newOrigin)
-				len-v1-sq
-				len-v2-sq)))
+								origin)	
+					newV1		(geometry/vec-rotate-y v1 angle)
+					newV2		(geometry/vec-rotate-y v2 angle) ]
+				(Rectangle.
+					newOrigin
+					newV1
+					newV2
+					newN
+					material
+					(geometry/vec-dot-product newN newOrigin)
+					len-v1-sq
+					len-v2-sq
+					(rectangle-bounding-box newOrigin newV1 newV2))))
 		(rotateZ [ this angle ]
 			(let [ 	newOrigin	(geometry/vec-rotate-z origin angle)
 					newN 		(geometry/vec-subtract
 									(geometry/vec-rotate-z
 										(geometry/vec-add N origin)
 										angle)
-								origin)				]
-			(Rectangle.
-				newOrigin
-				(geometry/vec-rotate-z v1 angle)
-				(geometry/vec-rotate-z v2 angle)
-				newN
-				material
-				(geometry/vec-dot-product newN newOrigin)
-				len-v1-sq
-				len-v2-sq)))
-		(scale [ this amount ]
-			this)
+								origin)
+					newV1		(geometry/vec-rotate-z v1 angle)
+					newV2		(geometry/vec-rotate-z v2 angle) ]
+				(Rectangle.
+					newOrigin
+					newV1
+					newV2
+					newN
+					material
+					(geometry/vec-dot-product newN newOrigin)
+					len-v1-sq
+					len-v2-sq
+					(rectangle-bounding-box newOrigin newV1 newV2))))
 		(flip-normal [ this ]
 			(Rectangle.
 				origin
@@ -233,7 +266,10 @@
 				material
 				(- d)
 				len-v1-sq
-				len-v2-sq))
+				len-v2-sq
+				bbox))
+		(bounding-box [ this ]
+			bbox)
 		(intersect [ this ray ]
 			(let [ t        (/	(-  d
 				       				(geometry/vec-dot-product N (:point ray)))
@@ -273,7 +309,8 @@
 						material
 						d
 						(* len-v1 len-v1)
-						(* len-v2 len-v2) )))
+						(* len-v2 len-v2)
+						(rectangle-bounding-box origin v1 v2) )))
 	(	[ sizeX sizeY normal material ]
 		(rectangle-create-normal geometry/vec-zero sizeX sizeY normal material)))
 
@@ -352,14 +389,14 @@
 				(.rotateZ rects angle)
 				material-black
 				material-white))
-		(scale [ this amount ]
-			this)
 		(flip-normal [ this ]
 			(Chessboard.
 				rows cols
 				(.flip-normal rects)
 				material-black
 				material-white))
+		(bounding-box [ this ]
+			(.bounding-box rects))
 		(intersect [ this ray ]
 			(.intersect rects ray))
 		(colour-at [ this root-object lights ray ]
