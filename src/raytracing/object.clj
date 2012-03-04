@@ -319,68 +319,128 @@
 	(	[ sizeX sizeY sizeZ material ]
 		(box-create geometry/vec-zero sizeX sizeY sizeZ material)))
 
+(defrecord Chessboard
+	[ rows cols rects material-black material-white ]
+	object-common/PObject
+		(debug [ this ]
+			(do	
+				(dbg rows)
+				(dbg cols)
+				(.debug rects)
+				this))
+		(translate [ this v ]
+			(Chessboard.
+				rows cols
+				(.translate rects v)
+				material-black
+				material-white))
+		(rotateX [ this angle ]
+			(Chessboard.
+				rows cols
+				(.rotateX rects angle)
+				material-black
+				material-white))
+		(rotateY [ this angle ]
+			(Chessboard.
+				rows cols
+				(.rotateY rects angle)
+				material-black
+				material-white))
+		(rotateZ [ this angle ]
+			(Chessboard.
+				rows cols
+				(.rotateZ rects angle)
+				material-black
+				material-white))
+		(scale [ this amount ]
+			this)
+		(flip-normal [ this ]
+			(Chessboard.
+				rows cols
+				(.flip-normal rects)
+				material-black
+				material-white))
+		(intersect [ this ray ]
+			(.intersect rects ray))
+		(colour-at [ this root-object lights ray ]
+			(let [ 	rect-top				(first (:sub-objects rects))
+					intersect-struct 		(first-intersecting-struct (:sub-objects rects) ray)
+					intersect-object 		(:object intersect-struct)
+					intersect-point			(geometry/ray-point 	
+												ray
+												(:first-intersect intersect-struct))
+					intersect-point-rel		(geometry/vec-subtract
+												intersect-point
+												(:origin rect-top))
+					xpos					(int (*	(/	(geometry/vec-dot-product
+															intersect-point-rel
+															(:v1 rect-top))
+														(:len-v1-sq rect-top))
+													cols))
+					xpos-checked			(if (< xpos 0)
+												0
+												(if (> xpos (- cols 1))
+													(- cols 1)
+													xpos))
+					ypos					(int (*	(/	(geometry/vec-dot-product
+															intersect-point-rel
+															(:v2 rect-top))
+														(:len-v2-sq rect-top))
+													rows))
+					ypos-checked			(if (< ypos 0)
+												0
+												(if (> ypos (- rows 1))
+													(- rows 1)
+													ypos))
+				 ]
+				(material/material-mix 	(if (even? (+ xpos-checked ypos-checked))
+											material-white
+											material-black)
+										(lighting/light-compute-diffuse
+											root-object
+											lights
+											intersect-point
+											(:N intersect-object))))))
+
 (defn chessboard-create
 	"Expects to be given the origin and size of the corner box and creates
 	 a chessboard of given size from it."
 	(	[ origin rows cols thickness material-black material-white ]
-		(.. (reduce composite-merge
-				(composite-create
-					(map 	#(let [	xpos 		(first %) 
-									ypos 		(first (rest %))
-
-									pos 		(geometry/vec-create xpos 0 ypos)
-									material 	(if (odd? (+ xpos ypos))
-													material-black
-													material-white) ]
-								(..	(rectangle-create-normal
-										1 1
-										geometry/vec-z-neg
-										material)
-									(rotateX math/PIover2) (translate pos)))
-							(math/cartesian-product (range 0 cols) (range 0 rows))))
-				[ (composite-create
-					(map 	#(let [ material-front 	(if (odd? %)
-														material-black
-														material-white)
-									material-back 	(if (even? %)
-														material-black
-														material-white)					
-
-									rect-front 		(.. (rectangle-create-normal
-															1 thickness
-															geometry/vec-z-neg
-															material-front)
-														(translate (geometry/vec-create % (- thickness) 0)))
-									rect-back 		(.. (rectangle-create-normal
-															1 thickness
-															geometry/vec-z-pos
-															material-back)
-														(translate (geometry/vec-create % (- thickness) rows))) 	]
-								(composite-create [ rect-front rect-back ]))
-							(range 0 cols)))
-				(composite-create
-					(map 	#(let [ material-front 	(if (odd? %)
-														material-black
-														material-white)
-									material-back 	(if (even? %)
-														material-black
-														material-white)					
-
-									rect-front 		(.. (rectangle-create-normal
-															1 thickness
-															geometry/vec-z-pos
-															material-front)
-														(rotateY (- math/PIover2))
-														(translate (geometry/vec-create 0 (- thickness) %)))
-									rect-back 		(.. (rectangle-create-normal
-															1 thickness
-															geometry/vec-z-neg
-															material-back)
-														(rotateY (- math/PIover2))
-														(translate (geometry/vec-create cols (- thickness) %))) 	]
-								(composite-create [ rect-front rect-back ]))
-							(range 0 rows))) ])
-			(translate origin) ))
+		(let [ rect-top 	(.. (rectangle-create-normal
+									cols rows
+									geometry/vec-z-neg
+									material-white)	
+								(rotateX math/PIover2))		
+			   rect-front 	(.. (rectangle-create-normal
+			   						cols thickness
+			   						geometry/vec-z-neg
+			   						material-white)
+		   						(translate (geometry/vec-create 0 (- thickness) 0)))
+			   rect-back 	(.. (rectangle-create-normal
+			   						cols thickness
+			   						geometry/vec-z-pos
+			   						material-white)
+		   						(translate (geometry/vec-create 0 (- thickness) rows)))
+			   rect-right 	(.. (rectangle-create-normal
+			   						rows thickness
+			   						geometry/vec-z-pos
+			   						material-white)
+			   					(rotateY (- math/PIover2))
+		   						(translate (geometry/vec-create 0 (- thickness) 0)))
+			   rect-left 	(.. (rectangle-create-normal
+			   						rows thickness
+			   						geometry/vec-z-neg
+			   						material-white)
+			   					(rotateY (- math/PIover2))
+		   						(translate (geometry/vec-create cols (- thickness) 0)))
+		]
+			(.. (Chessboard. 
+					rows cols
+					(composite-create
+						[ rect-top rect-front rect-back rect-right rect-left ]) ; rect-top has to be first !!!
+					material-black
+					material-white)
+				(translate origin) )))
 	( 	[ rows cols thickness material-black material-white ]
 		(chessboard-create geometry/vec-zero rows cols thickness material-black material-white)))
 
