@@ -23,7 +23,7 @@
 
 (def projection	(drawing/projection-create
 					(java.lang.Math/toRadians 60)
-					7
+					9
 					800
 					600
 					(drawing/camera-create
@@ -102,8 +102,8 @@
 		scene 
 		lights 
 		projection 
-		; (drawing/get-fn-classic)))
-		(drawing/get-fn-dof-classic 5 0.05)))
+		(drawing/get-fn-classic)))
+		; (drawing/get-fn-dof 5 0.1 (drawing/get-fn-antialiased 4))))
 
 (defn test-save [ pixels ]
 	(output/png		"test.png"
@@ -113,3 +113,8 @@
 (defn test-realtime [ pixels ]
 	(output/realtime 	projection
 						pixels))
+
+(defn test-realtime-save [ pixels ]
+	(do
+		(test-realtime pixels)
+		(test-save pixels)))

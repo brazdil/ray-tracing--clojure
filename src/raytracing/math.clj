@@ -24,3 +24,9 @@
 (def PIover2 (/ PI 2))
 (def INFINITY java.lang.Double/POSITIVE_INFINITY)
 (def mINFINITY java.lang.Double/NEGATIVE_INFINITY)
+(def EPSILON 0.0001)
+(def mEPSILON (- EPSILON))
+
+(defn is-zero 
+	[ x ]
+	(and (< x EPSILON) (> x mEPSILON)))

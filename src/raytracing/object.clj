@@ -30,7 +30,7 @@
 	[ objects ray ]
 	(let [ first-struct		(first-intersecting-struct objects ray)	]
 		(if (or 	(nil? first-struct)
-					(< (:first-intersect first-struct) object-common/epsilon))
+					(< (:first-intersect first-struct) math/EPSILON))
 			nil
 			(:object first-struct))))
 
@@ -40,7 +40,7 @@
 	[ objects ray ]
 	(let [ first-struct		(first-intersecting-struct objects ray)	]
 		(if (or 	(nil? first-struct)
-					(< (:first-intersect first-struct) object-common/epsilon))
+					(< (:first-intersect first-struct) math/EPSILON))
 			java.lang.Double/POSITIVE_INFINITY
 			(:first-intersect first-struct))))
 

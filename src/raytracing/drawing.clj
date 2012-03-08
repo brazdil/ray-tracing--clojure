@@ -26,40 +26,43 @@
 			    	(<= (+ (* px px) (* py py)) (* radius radius)))
 				(subpixels-seq sampling))))
 
-(defrecord Camera [ position look-at up sideways ])
+(defrecord Camera [ position look-at up sideways direction ])
 
 (defn camera-create
 	[ position look-at ]
-	(let [  d 	(geometry/vec-subtract look-at position)
-			up 	(geometry/vec-rotate-y
-					(geometry/vec-rotate-x
-						(geometry/vec-create 0.0 1.0 0.0)
-						(java.lang.Math/acos 
-							(/ 	(:z d) 
-								(java.lang.Math/sqrt 
-									(+ (* (:y d) (:y d)) 
-									   (* (:z d) (:z d)))))))
-					(- (java.lang.Math/acos 
-						(/ 	(:z d) 
-							(java.lang.Math/sqrt 
-								(+ (* (:x d) (:x d)) 
-								   (* (:z d) (:z d)))))))) ]
+	(let [  d 			(geometry/vec-subtract look-at position)
+			angle-alpha (if (math/is-zero (:z d))
+							(if (math/is-zero (:x d))
+								(throw (new IllegalArgumentException "Can't deal with camera looking straight up/down"))
+								(if (> (:x d) 0)
+									math/PIover2
+									(- math/PIover2)))
+							(java.lang.Math/atan (/ (:x d) (:z d))))
+			d-yz 		(geometry/vec-rotate-y d (- angle-alpha))
+			angle-beta 	(if (math/is-zero (:z d-yz))
+							(throw (new IllegalArgumentException "Can't deal with camera looking straight up/down"))
+							(- (java.lang.Math/atan (/ (:y d-yz) (:z d-yz)))))
+			up 			(geometry/vec-rotate-y
+							(geometry/vec-rotate-x
+								geometry/vec-y-pos
+								angle-beta)
+							angle-alpha)			]
 	(Camera. 	position 
 				look-at 
 				(geometry/vec-normalize up)
 				(geometry/vec-normalize
 					(geometry/vec-vector-product
-						(geometry/vec-subtract
-							look-at
-							position)
-						up)))))
+						d
+						up))
+				(geometry/vec-normalize d))))
 
 (defn camera-move
 	[ camera delta ]
 	(Camera. 	(geometry/vec-add delta (:position camera))
 				(geometry/vec-add delta (:look-at camera))
 				(:up camera)
-				(:sideways camera)))
+				(:sideways camera)
+				(:direction camera)))
 
 (defrecord ScreenRectangle [ top-left downwards sideways ] )
 
@@ -239,24 +242,48 @@
 	[ sampling ]
 	(partial get-pixel-antialiased pmap sampling))
 	
-(defn get-fn-dof-classic
-	[ sampling diameter ]
+(defn get-fn-dof
+	[ sampling diameter subfn ]
 	(partial get-pixel-dof 	map 
-							(get-fn-classic)
+							subfn
 							(map #(let [ subpixel (subpixel-randomization sampling [ 0 0 ] %) ]
 									[ (* (first subpixel) diameter)
 									  (* (first (rest subpixel)) diameter) ])
 								(dof-decenter-seq sampling))))
 
+(defn focus-on
+	"Returns screen distance and DOF diameter that will keep given object in focus"
+	( [ projection object epsilon ] 
+		(let 	[ 	bbox 				(.bounding-box object)
+					center 				(geometry/vec-create
+											(/ (+ (:xmin bbox) (:xmax bbox)) 2)
+											(/ (+ (:ymin bbox) (:ymax bbox)) 2)
+											(/ (+ (:zmin bbox) (:zmax bbox)) 2))
+					screen-distance 	(geometry/vec-dot-product
+											(geometry/vec-subtract
+												center
+												(:position (:camera projection)))
+											(:direction (:camera projection)))
+					bbox-vertices 		[ (geometry/vec-create (:xmin bbox) 0 0)
+					                      (geometry/vec-create (:xmax bbox) 0 0)
+					                      (geometry/vec-create 0 (:ymin bbox) 0)
+					                      (geometry/vec-create 0 (:ymax bbox) 0)
+					                      (geometry/vec-create 0 0 (:zmin bbox))
+					                      (geometry/vec-create 0 0 (:zmax bbox)) ]		]
+			
+			nil))
+	( [ projection object ]
+		(focus-on projection object 0.5)))
+
 (defn generate-pixels
 	"Draws the scene"
 	[ root-object lights projection func ]
-	(pmap 
+	(map 
 		#(func
 			root-object
 			lights
 			projection
 			% ) 
-		(pixels-seq
+		(reverse (pixels-seq
 			(:width projection) 
-			(:height projection))))
+			(:height projection)))))

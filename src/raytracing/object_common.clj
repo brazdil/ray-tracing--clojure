@@ -1,4 +1,5 @@
 (ns raytracing.object-common
+	(:require [raytracing.math :as math])
 	(:require [raytracing.geometry :as geometry])
 	(:require [raytracing.material :as material]))
 
@@ -26,12 +27,9 @@
 		"Takes the first intersection with the object and computes
 		 its color in that point"))
 
-(def epsilon 0.0001)
-(def minus-epsilon (- epsilon))
-
 (defn first-intersection
 	[ object ray ]
-	(reduce 	#(if (<= %2 epsilon)
+	(reduce 	#(if (<= %2 math/EPSILON)
 					%1
 					(if (nil? %1)
 						%2
