@@ -23,7 +23,7 @@
 
 (def projection	(drawing/projection-create
 					(java.lang.Math/toRadians 60)
-					9
+					8.571628677317875
 					800
 					600
 					(drawing/camera-create

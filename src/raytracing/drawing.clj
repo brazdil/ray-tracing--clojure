@@ -251,6 +251,43 @@
 									  (* (first (rest subpixel)) diameter) ])
 								(dof-decenter-seq sampling))))
 
+(defn- focus-on--screen-point
+	[ projection screen-rect point ]
+	(let [ camera-to-point		(geometry/vec-subtract point (:position (:camera projection))) ]
+		(geometry/vec-add 
+			(:position (:camera projection))
+			(geometry/vec-mult
+				camera-to-point
+				(/	(geometry/vec-dot-product
+						(:direction (:camera projection))
+						(:top-left screen-rect))
+					(geometry/vec-dot-product
+						(:direction (:camera projection))
+						camera-to-point))))))
+
+(defn- focus-on--camera-point
+	[ projection screen-rect-pos-x screen-rect-pos-y original-point screen-point ]
+	(let [ decentered-points 		[ 	(geometry/vec-add screen-point screen-rect-pos-x)
+										(geometry/vec-add screen-point screen-rect-pos-y)
+										(geometry/vec-subtract screen-point screen-rect-pos-x)
+										(geometry/vec-subtract screen-point screen-rect-pos-y)	] ]
+		(map #(geometry/vec-subtract
+					(:position (:camera projection))
+					(geometry/vec-add
+						screen-point
+						(let [ decenter-to-orig (geometry/vec-subtract % original-point) ]
+							(geometry/vec-mult
+								decenter-to-orig
+								(/ 	(geometry/vec-dot-product 
+										(:direction (:camera projection))
+										(geometry/vec-subtract
+											(:position (:camera projection))
+											original-point))
+									(geometry/vec-dot-product 
+										(:direction (:camera projection))
+										decenter-to-orig))))))
+			decentered-points)))
+
 (defn focus-on
 	"Returns screen distance and DOF diameter that will keep given object in focus"
 	( [ projection object epsilon ] 
@@ -264,21 +301,49 @@
 												center
 												(:position (:camera projection)))
 											(:direction (:camera projection)))
-					bbox-vertices 		[ (geometry/vec-create (:xmin bbox) 0 0)
-					                      (geometry/vec-create (:xmax bbox) 0 0)
-					                      (geometry/vec-create 0 (:ymin bbox) 0)
-					                      (geometry/vec-create 0 (:ymax bbox) 0)
-					                      (geometry/vec-create 0 0 (:zmin bbox))
-					                      (geometry/vec-create 0 0 (:zmax bbox)) ]		]
-			
-			nil))
+
+					screen-rect 		(screen-rect
+											(:camera projection)
+											screen-distance
+											(:width projection)
+											(:height projection)
+											(:viewing-angle projection)) 
+					screen-rect-pos-x	(geometry/vec-mult
+											(:sideways screen-rect)
+											(/ epsilon (:width projection)))
+					screen-rect-pos-y	(geometry/vec-mult
+											(:downwards screen-rect)
+											(/ epsilon (:height projection)))
+
+					bbox-vertices 		[ (geometry/vec-create (:xmin bbox) (:ymin bbox) (:zmin bbox))
+					                      (geometry/vec-create (:xmax bbox) (:ymin bbox) (:zmin bbox))
+					                      (geometry/vec-create (:xmin bbox) (:ymax bbox) (:zmin bbox))
+					                      (geometry/vec-create (:xmax bbox) (:ymax bbox) (:zmin bbox))
+					                      (geometry/vec-create (:xmin bbox) (:ymin bbox) (:zmax bbox))
+					                      (geometry/vec-create (:xmax bbox) (:ymin bbox) (:zmax bbox))
+					                      (geometry/vec-create (:xmin bbox) (:ymax bbox) (:zmax bbox))
+					                      (geometry/vec-create (:xmax bbox) (:ymax bbox) (:zmax bbox)) ]
+					screen-points		(map 	#(focus-on--screen-point projection screen-rect %) 
+												bbox-vertices)
+					camera-points 		(map 	#(focus-on--camera-point
+													projection
+													(dbg screen-rect-pos-x)
+													(dbg screen-rect-pos-y)
+													%1
+													%2)
+												bbox-vertices
+												screen-points)
+					decentered-dists	(map geometry/vec-length (dbg (reduce concat camera-points)))
+				]		
+			{ :screen-distance 	screen-distance
+ 			  :diameter 		(reduce min math/INFINITY decentered-dists) }))
 	( [ projection object ]
 		(focus-on projection object 0.5)))
 
 (defn generate-pixels
 	"Draws the scene"
 	[ root-object lights projection func ]
-	(map 
+	(pmap 
 		#(func
 			root-object
 			lights
