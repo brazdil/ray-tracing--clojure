@@ -10,15 +10,25 @@
 
 (defmacro dbg [x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
 
+(defn proj [ x y z u v w ]
+	(drawing/projection-create
+		(java.lang.Math/toRadians 60)
+		7
+		320
+		240
+		(drawing/camera-create
+			(geometry/vec-create x y z)
+			(geometry/vec-create u v w))					
+		material/colour-pastel-light-blue))
+
 (def projection	(drawing/projection-create
 					(java.lang.Math/toRadians 60)
-					2
-					640
-					480
+					7
+					800
+					600
 					(drawing/camera-create
-						(geometry/vec-create 1.0 1.9 -3.7)
-						(geometry/vec-create -5 1.8 5)
-						(geometry/vec-create 0 1 0))					
+						(geometry/vec-create -1.0 2.0 -5.0)
+						(geometry/vec-create -4.0 1.0  5.0))
 					material/colour-pastel-light-blue))
 
 (def sphere 	(object/sphere-create
@@ -42,7 +52,6 @@
  					1.8
  					(material/material-create-simple
  						material/colour-pastel-blue)))
-
 
 (def chessboard 	(object/chessboard-create 
 						(geometry/vec-create -8 0 0)
@@ -88,12 +97,13 @@
 			projection 
 			computers)))
 
-(defn draw-local []
+(defn draw-local [ ]
 	(drawing/generate-pixels 
 		scene 
 		lights 
 		projection 
-		(drawing/get-fn-antialiased 4)))
+		; (drawing/get-fn-classic)))
+		(drawing/get-fn-dof-classic 5 0.05)))
 
 (defn test-save [ pixels ]
 	(output/png		"test.png"

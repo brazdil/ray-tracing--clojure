@@ -77,17 +77,21 @@
 					bbox)))
 		(bounding-box [ this ]
 			bbox)
+		(closest-node [ this ray ]
+			(reduce 	#(if (nil? %2)
+							%1
+							(if (nil? %1)
+								%2
+								(if (< (:distance %1) (:distance %2))
+									%1
+									%2)))
+						(map 	#(.closest-node % ray) sub-objects)))
+		(colour-at [ this root-object lights ray ]
+			(throw (new IllegalArgumentException "Composite doesn't have a colour")))
 		(intersect [ this ray ]
 			(if (geometry/bounding-box-intersects bbox ray)
 				(reduce concat (map	#(.intersect % ray) sub-objects))
-				[] ))
-		(colour-at [ this root-object lights ray ]
-			(.colour-at
-				(first-intersecting-object 
-					sub-objects ray) 
-				root-object 
-				lights 
-				ray)))
+				[] )))
 
 (defn composite-create
 	[ objects ]
@@ -126,6 +130,11 @@
 				(+ (:y center) radius)
 				(- (:z center) radius)
 				(+ (:z center) radius)))
+		(closest-node [ this ray ]
+			(let [ distance (object-common/first-intersection this ray) ]
+				(if (nil? distance)
+					nil
+					{:object this, :distance distance})))
 		(intersect [ this ray ]
 			(let [ O_C  (geometry/vec-subtract (:point ray) center)
 				   a    (geometry/vec-dot-product 
@@ -147,18 +156,22 @@
 						[ (/ (+ (- b) (java.lang.Math/sqrt d)) (* 2 a))
 						  (/ (- (- b) (java.lang.Math/sqrt d)) (* 2 a)) ]))))
 		(colour-at [ this root-object lights ray ]
-			(let [ intersection 	(geometry/ray-point 	
-										ray
-										(object-common/first-intersection this ray)) ]
-			(material/material-mix 	material
-									(lighting/light-compute-diffuse
-										root-object
-										lights
-										intersection
-										(geometry/vec-normalize
-											(if inside-out
-												(geometry/vec-subtract center intersection)
-												(geometry/vec-subtract intersection center))))))))
+			(let [ 	first-intersection (object-common/first-intersection this ray) ]
+				(if (nil? first-intersection)
+					nil
+					(let [	intersection 	(geometry/ray-point 	
+												ray
+												first-intersection) ]
+						(material/material-mix 	
+							material
+							(lighting/light-compute-diffuse
+								root-object
+								lights
+								intersection
+								(geometry/vec-normalize
+									(if inside-out
+										(geometry/vec-subtract center intersection)
+										(geometry/vec-subtract intersection center))))))))))
 
 (defn sphere-create
 	(	[ origin radius material ]
@@ -270,6 +283,11 @@
 				bbox))
 		(bounding-box [ this ]
 			bbox)
+		(closest-node [ this ray ]
+			(let [ distance (object-common/first-intersection this ray) ]
+				(if (nil? distance)
+					nil
+					{:object this, :distance distance})))
 		(intersect [ this ray ]
 			(let [ t        (/	(-  d
 				       				(geometry/vec-dot-product N (:point ray)))
@@ -285,14 +303,17 @@
 					[ t ]
 					[ ])))
 		(colour-at [ this root-object lights ray ]
-			(material/material-mix 	material
-									(lighting/light-compute-diffuse
-										root-object
-										lights
-										(geometry/ray-point 	
-											ray
-											(object-common/first-intersection this ray))
-										N))))
+			(let [ first-intersection (object-common/first-intersection this ray) ]
+				(if (nil? first-intersection)
+					nil
+					(material/material-mix 	material
+											(lighting/light-compute-diffuse
+												root-object
+												lights
+												(geometry/ray-point 	
+													ray
+													first-intersection)
+												N))))))
 												
 (defn rectangle-create-normal
 	(	[ origin sizeX sizeY normal material ]
@@ -397,6 +418,11 @@
 				material-white))
 		(bounding-box [ this ]
 			(.bounding-box rects))
+		(closest-node [ this ray ]
+			(let [ distance (object-common/first-intersection this ray) ]
+				(if (nil? distance)
+					nil
+					{:object this, :distance distance})))
 		(intersect [ this ray ]
 			(.intersect rects ray))
 		(colour-at [ this root-object lights ray ]

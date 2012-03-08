@@ -13,6 +13,11 @@
 	(scale [ this amount ])
 	(flip-normal [ this ])
 	(bounding-box [ this ])
+	(closest-node [ this ray ]
+		"Returns a hashmap with two keys - :object is the closest non-composite object in the ray,
+		 :distance its distance from the origin of the ray in the multiple of the direction vector
+		 lengths. If there isn't such node (i.e. the ray doesn't intersect anything, function
+		 returns nil.")
 	(intersect [ this ray ] 
 		"Returns list of points of intersection of the object with given ray.
 		 For convenience these are returned as a single scalar, which is

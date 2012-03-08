@@ -17,17 +17,57 @@
 	[ sampling ]
 	(math/cartesian-product (range 0 sampling) (range 0 sampling)))
 
-(defrecord Camera [position look-at up])
+(defn dof-decenter-seq
+	[ sampling ]
+	(let [ center 	(/ sampling 2)
+	       radius 	(- center 0.5) ]
+		(filter #(let [ px (- center (+ (first %) 0.5))
+			            py (- center (+ (first (rest %)) 0.5)) ]
+			    	(<= (+ (* px px) (* py py)) (* radius radius)))
+				(subpixels-seq sampling))))
+
+(defrecord Camera [ position look-at up sideways ])
 
 (defn camera-create
-	[ position look-at up ]
-	(Camera. position look-at up))
+	[ position look-at ]
+	(let [  d 	(geometry/vec-subtract look-at position)
+			up 	(geometry/vec-rotate-y
+					(geometry/vec-rotate-x
+						(geometry/vec-create 0.0 1.0 0.0)
+						(java.lang.Math/acos 
+							(/ 	(:z d) 
+								(java.lang.Math/sqrt 
+									(+ (* (:y d) (:y d)) 
+									   (* (:z d) (:z d)))))))
+					(- (java.lang.Math/acos 
+						(/ 	(:z d) 
+							(java.lang.Math/sqrt 
+								(+ (* (:x d) (:x d)) 
+								   (* (:z d) (:z d)))))))) ]
+	(Camera. 	position 
+				look-at 
+				(geometry/vec-normalize up)
+				(geometry/vec-normalize
+					(geometry/vec-vector-product
+						(geometry/vec-subtract
+							look-at
+							position)
+						up)))))
 
-(defrecord ScreenRectangle [ top-left top-right bottom-left bottom-right ] )
+(defn camera-move
+	[ camera delta ]
+	(Camera. 	(geometry/vec-add delta (:position camera))
+				(geometry/vec-add delta (:look-at camera))
+				(:up camera)
+				(:sideways camera)))
+
+(defrecord ScreenRectangle [ top-left downwards sideways ] )
 
 (defn screen-rect-create
-	[ top-left top-right bottom-left bottom-right ]
-	(ScreenRectangle. top-left top-right bottom-left bottom-right))
+	[ top-left downwards sideways ]
+	(ScreenRectangle. 	top-left 
+						downwards
+						sideways))
 
 (defn screen-rect
 	"Returns the coordinates of screen's rectangle's vertices. 
@@ -36,7 +76,7 @@
 	(let [	angle-hori-half			(/ viewing-angle 2)
 
 			vec-direction			(geometry/vec-normalize
-										(geometry/vec-subtract (:look-at camera) (:position camera)))			
+										(geometry/vec-subtract (:look-at camera) (:position camera)))
 
 			vec-center				(geometry/vec-mult 
 										vec-direction
@@ -66,15 +106,14 @@
 										vec-twice-sideways)
 			vec-bottom-left			(geometry/vec-subtract
 										vec-edge-left
-										vec-upwards)
-			vec-bottom-right		(geometry/vec-add
-										vec-bottom-left
-										vec-twice-sideways) ]
+										vec-upwards) 	]
+			; vec-bottom-right		(geometry/vec-add
+			; 							vec-bottom-left
+			; 							vec-twice-sideways) ]
 		(screen-rect-create 
 			vec-top-left
-			vec-top-right
-			vec-bottom-left
-			vec-bottom-right)))
+			(geometry/vec-subtract vec-bottom-left vec-top-left)
+			(geometry/vec-subtract vec-top-right vec-top-left))))
 
 (defrecord Projection [ viewing-angle screen-distance width height camera screen-rect background-colour ])
 
@@ -84,7 +123,7 @@
 					screen-distance 
 					width 
 					height 
-					camera 
+					camera
 					(screen-rect
 						camera
 						screen-distance
@@ -92,6 +131,16 @@
 						height 
 						viewing-angle) 
 					background-colour))
+
+(defn projection-move-camera
+	[ projection delta ]
+	(Projection. 	(:viewing-angle projection)
+					(:screen-distance projection)
+					(:width projection)
+					(:height projection)
+					(camera-move (:camera projection) delta)
+					(:screen-rect projection)
+					(:background-colour projection)))
 
 (defrecord Pixel [ coords colour ])
 
@@ -107,33 +156,22 @@
 			x					(+ (first coords) 0.5)
 			y					(+ (first (rest coords)) 0.5)
 
-			; total  				(* (:width projection) (:height projection))
 			screen-coord		(geometry/vec-add
 									(geometry/vec-add
 										(geometry/vec-mult
-											(geometry/vec-subtract
-												(:top-right screen-rect)
-												(:top-left screen-rect))
+											(:sideways screen-rect)
 											(/ x (:width projection)))
 										(geometry/vec-mult
-											(geometry/vec-subtract
-												(:bottom-left screen-rect)
-												(:top-left screen-rect))
+											(:downwards screen-rect)
 											(/ y (:height projection))))
 									(:top-left screen-rect))
 			ray 				(geometry/ray-create
 									(:position camera)
 									screen-coord)
-			intersections		(.intersect root-object ray) ]
-		; (println coords)
-		; increase the counter and print if increased by 1 percent
-		; (send-off counter #(do	(if (not= 	(quot (* 100 %) total)
-		; 									(quot (* 100 (inc %)) total))
-		; 							(println (str "computing: " (quot (* 100 (inc %)) total) "%")))
-		; 						(inc %)))
-		(if (empty? intersections)
+			closest-node		(.closest-node root-object ray) ]
+		(if (nil? closest-node)
 			(pixel-create coords (:background-colour projection))
-			(pixel-create coords (.colour-at root-object root-object lights ray)))))
+			(pixel-create coords (.colour-at (:object closest-node) root-object lights ray)))))
 
 (defn- subpixel-randomization 
 	"Given a subpixel, it randomizes its coordinate"
@@ -170,6 +208,25 @@
 										(filter #(not (is-coord-in % corner-subpixels))
 												(subpixels-seq sampling))))))))))
 
+(defn get-pixel-dof
+	[ map-fn get-pixel-fn samples root-object lights projection coords ]
+	(let [ 	camera-up 			(:up (:camera projection))
+			camera-sideways		(:sideways (:camera projection)) ]
+		(pixel-create
+			coords
+			(material/colour-average
+				(map-fn 	(fn [ delta ]
+								(:colour (get-pixel-fn 	
+												root-object
+												lights
+												(projection-move-camera 
+													projection
+													(geometry/vec-add
+														(geometry/vec-mult camera-sideways (first delta))
+														(geometry/vec-mult camera-up (first (rest delta)))))
+												coords)))
+							samples)))))
+
 (defn get-fn-classic
 	[ ]
 	get-pixel-classic)
@@ -182,6 +239,15 @@
 	[ sampling ]
 	(partial get-pixel-antialiased pmap sampling))
 	
+(defn get-fn-dof-classic
+	[ sampling diameter ]
+	(partial get-pixel-dof 	map 
+							(get-fn-classic)
+							(map #(let [ subpixel (subpixel-randomization sampling [ 0 0 ] %) ]
+									[ (* (first subpixel) diameter)
+									  (* (first (rest subpixel)) diameter) ])
+								(dof-decenter-seq sampling))))
+
 (defn generate-pixels
 	"Draws the scene"
 	[ root-object lights projection func ]
