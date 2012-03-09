@@ -1,4 +1,5 @@
 (ns raytracing.main
+	(:require [raytracing.autofocus :as autofocus])
 	(:require [raytracing.drawing :as drawing])
 	(:require [raytracing.math :as math])
 	(:require [raytracing.geometry :as geometry])

@@ -1,5 +1,6 @@
 (ns raytracing.geometry
-    (:require [raytracing.math :as math]))
+    (:require [raytracing.math :as math])
+    (:import (raytracing DoubleDouble)))
 
 ; (set! *warn-on-reflection* true)
 
@@ -19,6 +20,14 @@
                             ^Double zmin 
                             ^Double zmax ])
 
+(defrecord PVector [ ^DoubleDouble x
+                     ^DoubleDouble y
+                     ^DoubleDouble z ])
+
+(defn pdouble 
+    [ x ]
+    (new DoubleDouble x))
+
 (defn- fn-comp  
     [ coord cmp a b ]
     (if (cmp a (coord b))
@@ -28,6 +37,12 @@
 (defn vec-create 
     [ x y z ]
     (Vector. x y z))
+
+(defn pvec-create
+    ( [ x y z ]
+      (PVector. (new DoubleDouble x) (new DoubleDouble y) (new DoubleDouble z)) )
+    ( [ v ]
+      (PVector. (new DoubleDouble (:x v)) (new DoubleDouble (:y v)) (new DoubleDouble (:z v)))))
 
 (def vec-zero   (vec-create 0 0 0))
 (def vec-x-pos  (vec-create 1 0 0))
@@ -44,6 +59,13 @@
                    (+ (:y v1) (:y v2))
                    (+ (:z v1) (:z v2))))
 
+(defn pvec-add
+    "Adds two vectors"
+    [ v1 v2 ]
+    (pvec-create   (.add (:x v1) (:x v2))
+                   (.add (:y v1) (:y v2))
+                   (.add (:z v1) (:z v2))))
+
 (defn vec-subtract
     "Subtracts two vectors"
     [ v1 v2 ]
@@ -51,12 +73,26 @@
                    (- (:y v1) (:y v2))
                    (- (:z v1) (:z v2))))
 
+(defn pvec-subtract
+    "Subtracts two vectors"
+    [ v1 v2 ]
+    (pvec-create    (.subtract (:x v1) (:x v2))
+                    (.subtract (:y v1) (:y v2))
+                    (.subtract (:z v1) (:z v2))))
+
 (defn vec-mult
     "Multiplies a vector by a scalar"
     [ v k ]
     (vec-create    (* k (:x v))
                    (* k (:y v))
                    (* k (:z v))))
+
+(defn pvec-mult
+    "Multiplies a vector by a scalar"
+    [ v k ]
+    (pvec-create   (.multiply k (:x v))
+                   (.multiply k (:y v))
+                   (.multiply k (:z v))))
 
 (defn vec-length
     "Returns the length of a vector"
@@ -66,10 +102,24 @@
             (* (:y v) (:y v)) 
             (* (:z v) (:z v)))))
 
+(defn pvec-length
+    "Returns the length of a vector"
+    [ v ]
+    (.sqrt
+        (reduce #(.add %1 %2)
+            (.multiply (:x v) (:x v)) 
+            [ (.multiply (:y v) (:y v)) 
+              (.multiply (:z v) (:z v)) ] )))
+
 (defn vec-normalize
     "Returns unit length vector"
     [ v ]
     (vec-mult v (/ 1 (vec-length v))))
+
+(defn pvec-normalize
+    "Returns unit length vector"
+    [ v ]
+    (pvec-mult v (.divide (new DoubleDouble 1.0) (pvec-length v))))
 
 (defn vec-dot-product
     "Returns the dot product of two vectors"
@@ -77,6 +127,14 @@
     (+  (* (:x v1) (:x v2)) 
         (* (:y v1) (:y v2)) 
         (* (:z v1) (:z v2))))
+
+(defn pvec-dot-product
+    "Returns the dot product of two vectors"
+    [ v1 v2 ]
+    (reduce #(.add %1 %2)
+        (.multiply (:x v1) (:x v2)) 
+        [ (.multiply (:y v1) (:y v2)) 
+          (.multiply (:z v1) (:z v2)) ] ))
 
 (defn vec-vector-product
     "Returns the vector product of two vectors"
