@@ -28,7 +28,7 @@
 		(map #(geometry/pvec-subtract
 					(:position camera)
 					(geometry/pvec-add
-						screen-point
+						original-point
 						(let [ decenter-to-orig (geometry/pvec-subtract % original-point) ]
 							(geometry/pvec-mult
 								decenter-to-orig
@@ -97,7 +97,12 @@
 												screen-points)
 					decentered-dists	(map geometry/pvec-length (reduce concat camera-points))
 				]		
+			; (dbg (geometry/pvec-normalize (geometry/pvec-subtract (first bbox-vertices) (first screen-points) ) ))
+			; (dbg (geometry/pvec-normalize (geometry/pvec-subtract (first bbox-vertices) (:position p-camera) ) ))
 			{ :screen-distance 	screen-distance
- 			  :diameter 		(reduce #(if (.lt %1 %2) %1 %2) (geometry/pdouble math/INFINITY) decentered-dists) }))
+ 			  :diameter 		(.doubleValue 
+ 			  						(reduce 	#(if (.lt %1 %2) %1 %2) 
+ 			  									(geometry/pdouble math/INFINITY) 
+ 			  									decentered-dists)) 					}))
 	( [ projection object ]
 		(focus-on projection object 0.5)))

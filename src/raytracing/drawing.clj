@@ -145,6 +145,21 @@
 					(:screen-rect projection)
 					(:background-colour projection)))
 
+(defn projection-move-screen
+	[ projection new-distance ]
+	(Projection. 	(:viewing-angle projection)
+					new-distance
+					(:width projection)
+					(:height projection)
+					(:camera projection)
+					(screen-rect
+						(:camera projection)
+						new-distance
+						(:width projection)
+						(:height projection)
+						(:viewing-angle projection))
+					(:background-colour projection)))
+
 (defrecord Pixel [ coords colour ])
 
 (defn pixel-create

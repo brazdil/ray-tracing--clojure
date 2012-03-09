@@ -62,20 +62,6 @@
 						(material/material-create-simple material/colour-pastel-light-gray)
 						(material/material-create-simple material/colour-pastel-white)))
 
-; (def floor 		(.debug
-; 				(.translate 
-; 					(.debug
-; 					(.rotateX
-; 						(.debug
-; 						(object/rectangle-create-normal
-; 							10
-; 							20
-; 							geometry/vec-z-neg
-; 							(material/material-create-simple
-; 								material/colour-gray)))
-; 						math/PIover2))
-; 					(geometry/vec-create -5 -1 0))))
-
 (def light1		(lighting/light-create
 					(geometry/vec-create 6 8 -4)
 					material/colour-white))
@@ -83,6 +69,10 @@
 (def scene 		(object/composite-create [ sphere box1 box2 chessboard ]))
 
 (def lights [ light1 ])
+
+(def focus  	(autofocus/focus-on projection sphere))
+(def projection-focused 	(drawing/projection-move-screen projection (:screen-distance focus)))
+(def drawing-dof-focused 	(drawing/get-fn-dof 5 (:diameter focus) (drawing/get-fn-antialiased 4)))
 
 (def computer-localhost (network/computer-create "localhost" "127.0.0.1" 1099))
 (def computer-pwf (network/computer-create "linux.pwf.cl.cam.ac.uk" "193.60.95.68" 1099))
@@ -103,8 +93,9 @@
 		scene 
 		lights 
 		projection 
-		(drawing/get-fn-classic)))
+		; (drawing/get-fn-classic)))
 		; (drawing/get-fn-dof 5 0.1 (drawing/get-fn-antialiased 4))))
+		drawing-dof-focused))
 
 (defn test-save [ pixels ]
 	(output/png		"test.png"
