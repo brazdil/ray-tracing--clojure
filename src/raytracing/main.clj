@@ -11,22 +11,11 @@
 
 (defmacro dbg [x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
 
-(defn proj [ x y z u v w ]
-	(drawing/projection-create
-		(java.lang.Math/toRadians 60)
-		7
-		320
-		240
-		(drawing/camera-create
-			(geometry/vec-create x y z)
-			(geometry/vec-create u v w))					
-		material/colour-pastel-light-blue))
-
 (def projection	(drawing/projection-create
 					(java.lang.Math/toRadians 60)
 					8.571628677317875
-					800
-					600
+					1920
+					1440
 					(drawing/camera-create
 						(geometry/vec-create -1.0 2.0 -5.0)
 						(geometry/vec-create -4.0 1.0  5.0))
@@ -70,7 +59,7 @@
 
 (def lights [ light1 ])
 
-(def focus  	(autofocus/focus-on projection sphere))
+(def focus  				(autofocus/focus-on projection sphere))
 (def projection-focused 	(drawing/projection-move-screen projection (:screen-distance focus)))
 (def drawing-dof-focused 	(drawing/get-fn-dof 5 (:diameter focus) (drawing/get-fn-antialiased 4)))
 

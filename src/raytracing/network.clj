@@ -1,6 +1,7 @@
 (ns raytracing.network
 	(:require [lamina.core :as lamina])
 	(:require [raytracing.drawing :as drawing])
+	(:require [raytracing.math :as math])	
 	(:require [raytracing.material :as material]))
 
 (defmacro dbg [x] `(let [x# ~x] (println "dbg:" '~x "=" x#) x#))
@@ -34,18 +35,26 @@
 		nil))
 
 (defn- get-pixel-classic
-	[ root-object lights projection computer-queue io-agent coords ]
+	[ root-object lights projection computer-queue io-agent part-index part-count ]
 	(let
 		; get a computer 
-		[ computer 	(lamina/wait-for-message computer-queue) ]
+		[ computer 	(lamina/wait-for-message computer-queue)
+		; compute the range
+		  part-size	(quot (:width projection) part-count)
+		  col-from 	(* part-size part-index)
+		  col-to	(if (= part-index (- part-count 1))
+		  				(:width projection)
+		  				(* part-size (inc part-index))) 	]
+
 		; (send-off 	io-agent
 		; 			#(do (println 
 		; 					(str "Computing (" (get coords 0) ", " (get coords 1)
 		; 				  		 ") using " (:name computer)))
 		; 				 %))
+
 		; compute the value
 		(let [ value 	(try 	(.. (java.rmi.registry.LocateRegistry/getRegistry (:ip computer) (:port computer))
-									(lookup server-name) (getPixelClassic coords))
+									(lookup server-name) (getPixelsClassic col-from col-to))
 								(catch Exception e (println e)))	]
 			; put the computer back into the queue
 			(lamina/enqueue computer-queue computer)
@@ -55,11 +64,11 @@
 				(do
 					(send-off 	io-agent
 								#(do (println 
-										(str "FAILED computing (" (first coords) ", " (first (rest coords)) 
+										(str "FAILED computing (" col-from " - " col-to
 									  		 ") using " (:name computer)))
 									 %))
 					; try it again
-					(recur root-object lights projection computer-queue io-agent coords))
+					(recur root-object lights projection computer-queue io-agent part-index part-count))
 				; computed ! return the value
 				value))))
 
@@ -77,20 +86,21 @@
  	"Draws the scene distributively"
  	[ root-object lights projection computers ]
  	(let [ 	computer-queue 	(lamina/channel) 
- 			io-agent		(agent 0)			]
-		; put all the computers in the queue
+ 			io-agent		(agent 0)			
+ 			part-count 		(* 3 (count computers))		]
+		; put all the available computers in the queue
 		(dorun (map #(init-computer root-object lights projection computer-queue %) computers))
 		; create the sequence that will compute everything distributively
-		(pmap 	#(get-pixel-classic
-					root-object
-					lights
-					projection
-					computer-queue
-					io-agent
-					(vec %))
-				(drawing/pixels-seq
-					(:width projection) 
-					(:height projection)))))
+		(reduce concat 
+			(pmap 	#(get-pixel-classic
+						root-object
+						lights
+						projection
+						computer-queue
+						io-agent
+						%
+						part-count)
+					(range 0 part-count)))))
 
 ; SERVER PART
 
@@ -107,12 +117,13 @@
 	    		    :lights lights
 	    		    :projection projection }))
     		:initialized))
-    (getPixelClassic [ coords ] 
+    (getPixelsClassic [ col_from col_to ] 
     	(do ; (print "Computing " coords "... ")
-    		(let [ result   	(drawing/get-pixel-classic (:root-object @server-data)
-						    				               (:lights @server-data)
-						    				               (:projection @server-data)
-						    				               coords) ]
+    		(let [ result   	(map 	#(drawing/get-pixel-classic 	(:root-object @server-data)
+						    						               		(:lights @server-data)
+						    				               				(:projection @server-data)
+						    				               				%)
+    									(math/cartesian-product (range col_from col_to) (range 0 (:height (:projection @server-data))))) ]
     			; (println "OK")
     			result)))
     ))
