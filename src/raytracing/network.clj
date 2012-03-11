@@ -55,7 +55,7 @@
 		; compute the value
 		(let [ value 	(try 	(.. (java.rmi.registry.LocateRegistry/getRegistry (:ip computer) (:port computer))
 									(lookup server-name) (getPixelsClassic col-from col-to))
-								(catch Exception e (println e)))	]
+								(catch Exception e nil)) ] ; (println e)))	]
 			; put the computer back into the queue
 			(lamina/enqueue computer-queue computer)
 			; decide what to do next
@@ -76,7 +76,7 @@
 	[ root-object lights projection computer-queue computer ]
 	(let [ value 	(try 	(.. (java.rmi.registry.LocateRegistry/getRegistry (:ip computer) (:port computer))
 								(lookup server-name) (init root-object lights projection))
-							(catch Exception e (println e)))	]
+							(catch Exception e nil)) ] ;(println e)))	]
 		(if (= value :initialized)
 			(lamina/enqueue computer-queue computer)
 			(println (str (:name computer) " wasn't initialized") ))))
@@ -118,14 +118,14 @@
 	    		    :projection projection }))
     		:initialized))
     (getPixelsClassic [ col_from col_to ] 
-    	(do ; (print "Computing " coords "... ")
-    		(let [ result   	(map 	#(drawing/get-pixel-classic 	(:root-object @server-data)
+    	(do (print "Computing " col_from "-" col_to "... ")
+    		(let [ result   	(dorun (pmap 	#(drawing/get-pixel-classic 	(:root-object @server-data)
 						    						               		(:lights @server-data)
 						    				               				(:projection @server-data)
 						    				               				%)
-    									(math/cartesian-product (range col_from col_to) (range 0 (:height (:projection @server-data))))) ]
-    			; (println "OK")
-    			result)))
+    									(math/cartesian-product (range col_from col_to) (range 0 (:height (:projection @server-data)))))) ]
+    			(println "OK")
+    			(vec result))))
     ))
 
 (def server-object (server-generator))

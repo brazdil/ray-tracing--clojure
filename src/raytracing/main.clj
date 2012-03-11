@@ -14,8 +14,8 @@
 (def projection	(drawing/projection-create
 					(java.lang.Math/toRadians 60)
 					8.571628677317875
-					1920
-					1440
+					800
+					600
 					(drawing/camera-create
 						(geometry/vec-create -1.0 2.0 -5.0)
 						(geometry/vec-create -4.0 1.0  5.0))
@@ -65,8 +65,9 @@
 
 (def computer-localhost (network/computer-create "localhost" "127.0.0.1" 1099))
 (def computer-pwf (network/computer-create "linux.pwf.cl.cam.ac.uk" "193.60.95.68" 1099))
+(def computer-srcf (network/computer-create "shell.srcf.net" "131.111.179.83" 1099))
 ; (def computer-strelec (network/computer-create "strelec" "89.102.181.190" 9999))
-(def computers [ computer-localhost computer-pwf ])
+(def computers [ computer-localhost computer-pwf computer-srcf ])
 
 (defn draw-network []
 	(do 
