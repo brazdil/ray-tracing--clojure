@@ -46,11 +46,11 @@
 		  				(:width projection)
 		  				(* part-size (inc part-index))) 	]
 
-		; (send-off 	io-agent
-		; 			#(do (println 
-		; 					(str "Computing (" (get coords 0) ", " (get coords 1)
-		; 				  		 ") using " (:name computer)))
-		; 				 %))
+		(send-off 	io-agent
+					#(do (println 
+							(str "SENDING " col-from "-" col-to
+						  		 " to " (:name computer)))
+						 %))
 
 		; compute the value
 		(let [ value 	(try 	(.. (java.rmi.registry.LocateRegistry/getRegistry (:ip computer) (:port computer))
@@ -59,18 +59,24 @@
 			; put the computer back into the queue
 			(lamina/enqueue computer-queue computer)
 			; decide what to do next
-			(if (nil? value)
+			(if (and (nil? value) (= (count value) (* (:height projection) (- col-to col-from))))
 				; couldn't compute => try different computer
 				(do
 					(send-off 	io-agent
 								#(do (println 
-										(str "FAILED computing (" col-from " - " col-to
-									  		 ") using " (:name computer)))
+										(str "FAILED " col-from "-" col-to
+									  		 " using " (:name computer)))
 									 %))
 					; try it again
 					(recur root-object lights projection computer-queue io-agent part-index part-count))
 				; computed ! return the value
-				value))))
+				(do 
+					(send-off 	io-agent
+								#(do (println 
+										(str "DONE " col-from "-" col-to
+									  		 " using " (:name computer)))
+									 %))
+					value)))))
 
 (defn- init-computer
 	[ root-object lights projection computer-queue computer ]
@@ -118,13 +124,15 @@
 	    		    :projection projection }))
     		:initialized))
     (getPixelsClassic [ col_from col_to ] 
-    	(do (print "Computing " col_from "-" col_to "... ")
-    		(let [ result   	(dorun (pmap 	#(drawing/get-pixel-classic 	(:root-object @server-data)
-						    						               		(:lights @server-data)
-						    				               				(:projection @server-data)
-						    				               				%)
-    									(math/cartesian-product (range col_from col_to) (range 0 (:height (:projection @server-data)))))) ]
-    			(println "OK")
+    	(do (println "Computing " col_from "~" col_to "... ")
+    		(let [ result   (pmap 	#(drawing/get-pixel-classic 	
+    									(:root-object @server-data)
+					               		(:lights @server-data)
+			               				(:projection @server-data)
+			               				%)
+									(math/cartesian-product 
+										(range col_from col_to) 
+										(range 0 (:height (:projection @server-data))))) ]
     			(vec result))))
     ))
 
